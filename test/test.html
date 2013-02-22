@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>loader test</title>
+
+<script src="../require.js"></script>
+
+<style>
+.uncheck,
+.checking,
+.pass,
+.fail {
+    width: 100px;
+}
+
+.uncheck { background: #eee; }
+.checking { background: yellow; }
+.pass { background: green; }
+.fail { background: red; }
+</style>
+</head>
+
+<body>
+<table>
+    <tr>
+        <th colspan="2" align="left">AMD:</th>
+    </tr>
+    <tr>
+        <td><input value="amd/simple" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/noDefineId" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/objectFactory" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/simpleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/relativeDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/manyDependencies" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/innerDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/innerRelativeDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/deepDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/circleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/combine" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">CJS:</th>
+    </tr>
+    <tr>
+        <td><input value="cjs/simple" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/noDefineId" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/simpleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/relativeDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/manyDependencies" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/deepDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/circleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/combine" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+</table>
+
+<script>
+(function () {
+    document.body.onclick = function ( e ) {
+        e = e || window.event;
+        var target = e.srcElement || e.target;
+
+        if ( target.tagName == 'INPUT' && target.getAttribute( 'type' ) == 'button' ) {
+            checking( target );
+        }
+    };
+
+    function getStateTd( td ) {
+        td = td.parentNode.nextSibling;
+        while ( td ) {
+            if ( td.nodeType == 1 && td.tagName == 'TD' ) {
+                break;
+            }
+
+            td = td.nextSibling;
+        }
+
+        return td;
+    }
+
+    function checking( target ) {
+        var stateTd = getStateTd( target );
+        var moduleId = target.value + '/index';
+        stateTd.className = 'checking';
+
+        require( [ moduleId ], function ( module ) {
+            if ( 
+                module 
+                && module.name == moduleId 
+                && ( typeof module.check != 'function' 
+                     || module.check() )
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+        } );
+    }
+})();
+</script>
+</body>
+</html>
