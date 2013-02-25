@@ -1,6 +1,5 @@
 /**
- * @file js loader run in browser
- *       module define conforming amd spec
+ * @file ECOMFE标准加载器，符合AMD规范
  * @author errorrik(errorrik@gmail.com)
  */
 
@@ -11,163 +10,183 @@ var define;
 var require;
 
 (function ( global ) {
-    var ie = /msie/i.test( global.navigator );
-    var currentScriptDefines = [];
-
+    // "mod_"开头的变量或函数为内部模块管理函数
+    // 为提高压缩率，不使用function或object包装
+    
     /**
-     * 模块管理
+     * 已定义模块容器
      * 
      * @inner
      * @type {Object}
      */
-    var modules = (function () {
-        /**
-         * 已定义模块容器
-         * 
-         * @inner
-         * @type {Object}
-         */
-        var definedModule = {};
+    var mod_definedModule = {};
 
-        /**
-         * 定义中模块容器
-         * 
-         * @inner
-         * @type {Object}
-         */
-        var definingModule = {};
+    /**
+     * 定义中模块容器
+     * 
+     * @inner
+     * @type {Object}
+     */
+    var mod_definingModule = {};
 
-        /**
-         * 模块添加事件监听器
-         * 
-         * @inner
-         * @type {Object.<Array>}
-         */
-        var modulesDefineListener = {};
-        
-        /**
-         * 模块管理
-         * 
-         * @inner
-         */
-        return {
-            /**
-             * 定义模块
-             * 
-             * @param {string} id 模块标识
-             */
-            define: function ( id ) {
-                var module = definingModule[ id ];
-                if ( !module ) {
-                    return;
-                }
+    /**
+     * 模块添加事件监听器
+     * 
+     * @inner
+     * @type {Object.<Array>}
+     */
+    var mod_definedListener = {};
 
-                var deps = module.dependencies;
-                var len  = deps.length;
-
-                while ( len-- ) {
-                    var dependName = deps[ len ];
-                    if ( !this.exists( dependName ) ) {
-                        return;
-                    }
-                }
-console.log( 'define ' + id );
-                var factoryDeps = module.factoryDependencies;
-                var len  = factoryDeps.length;
-                var args = [];
-
-                while ( len-- ) {
-                    var dependName = factoryDeps[ len ];
-                    args[ len ] = module.buildinModule[ dependName ]
-                        || modules.get( dependName );
-                }
-
-                var factory = module.factory;
-                var exports = typeof factory == 'function'
-                    ? factory.apply( this, args )
-                    : factory;
-
-                if ( typeof exports != 'undefined' ) {
-                    module.exports = exports;
-                }
-
-                definedModule[ id ] = module;console.log( 'finished define ' + id );
-                var listeners = modulesDefineListener[ id ];
-                var len = listeners instanceof Array && listeners.length;
-                var arg = {
-                    id     : id,
-                    module : module.exports
-                };
-
-                // fire define event
-                if ( len ) {
-                    for ( var i = 0; i < len; i++ ) {
-                        listeners[ i ]( /*arg*/ );
-                    }
-                    listeners.length = 0;
-                }
-
-                
-                delete modulesDefineListener[ id ];
-                delete definingModule[ id ];
-            },
-
-            /**
-             * 添加定义中模块
-             * 
-             * @param {string} id 模块标识
-             * @param {Object} module 模块
-             */
-            addDefining: function ( id, module ) {
-                definingModule[ id ] = module;
-            },
-
-            /**
-             * 判断模块是否存在
-             * 
-             * @param {string} id 模块标识
-             * @return {boolean}
-             */
-            exists: function ( id ) {
-                return id in definedModule;
-            },
-
-            /**
-             * 获取模块
-             * 
-             * @param {string} id 模块标识
-             * @return {Object}
-             */
-            get: function ( id ) {
-                return definedModule[ id ] && definedModule[ id ].exports;
-            },
-
-            /**
-             * 获取定义中模块
-             * 
-             * @param {string} id 模块标识
-             * @return {Object}
-             */
-            getDefining: function ( id ) {
-                return definingModule[ id ];
-            },
-
-            /**
-             * 添加“模块添加”事件监听器
-             * 
-             * @param {string} id 模块标识
-             * @param {Function} listener 监听器
-             */
-            addDefineListener: function ( id, listener ) {
-                var listeners = modulesDefineListener[ id ];
-                if ( !(listeners instanceof Array) ) {
-                    listeners = modulesDefineListener[ id ] = [];
-                }
-
-                listeners.push( listener );
-            }
+    /**
+     * 定义模块
+     * 
+     * @param {string} id 模块标识
+     */
+    function mod_define( id, factoryModules, dependencies, factory ) {
+        var module = {
+            id           : id,
+            dependencies : dependencies,
+            factory      : factory,
+            exports      : {}
         };
-    })();
+
+        mod_definingModule[ id ] = module;
+
+        if ( isReady() ) {
+            initModule();
+        } else {
+            each( dependencies, function ( dependId ) {
+                mod_addDefinedListener( dependId, tryInitModule );
+            } );
+        }
+
+        function tryInitModule() {
+            if ( isReady() ) {
+                initModule();
+            }
+        }
+
+        function isReady() {
+            var len  = dependencies.length;
+            while ( len-- ) {
+                var dependId = dependencies[ len ];
+                if ( !mod_exists( dependId ) ) {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        function initModule() {
+            // 构造factory参数
+            var buildinModule = {
+                require : function ( requireId, callback ) {
+                    return require( normalize( requireId, id ), callback )
+                },
+                exports : module.exports,
+                module  : module
+            };
+            var len  = factoryModules.length;
+            var args = [];
+
+            while ( len-- ) {
+                var moduleId = factoryModules[ len ];
+                args[ len ] = buildinModule[ moduleId ]
+                    || mod_get( moduleId );
+            }
+
+            // 调用factory函数初始化module
+            var exports = typeof factory == 'function'
+                ? factory.apply( global, args )
+                : factory;
+
+            if ( typeof exports != 'undefined' ) {
+                module.exports = exports;
+            }
+
+            // 存储已定义模块
+            mod_definedModule[ id ] = module;
+            delete mod_definingModule[ id ];
+
+            // 触发defined事件
+            var listeners = mod_definedListener[ id ];
+            var len = listeners instanceof Array && listeners.length;
+            
+            if ( len ) {
+                for ( var i = 0; i < len; i++ ) {
+                    listeners[ i ]();
+                }
+                listeners.length = 0;
+            }
+
+            // 进行listener清理
+            delete mod_definedListener[ id ];
+        }
+    }
+
+    /**
+     * 判断模块是否存在
+     * 
+     * @param {string} id 模块标识
+     * @return {boolean}
+     */
+    function mod_exists( id ) {
+        return id in mod_definedModule;
+    }
+
+    /**
+     * 获取模块
+     * 
+     * @param {string} id 模块标识
+     * @return {Object}
+     */
+    function mod_get( id ) {
+        return mod_definedModule[ id ] && mod_definedModule[ id ].exports;
+    }
+
+    /**
+     * 添加“模块添加”事件监听器
+     * 
+     * @param {string} id 模块标识
+     * @param {Function} listener 监听器
+     */
+    function mod_addDefinedListener( id, listener ) {
+        if ( mod_exists( id ) ) {
+            return;
+        }
+
+        var listeners = mod_definedListener[ id ];
+        if ( !(listeners instanceof Array) ) {
+            listeners = mod_definedListener[ id ] = [];
+        }
+
+        listeners.push( listener );
+    }
+
+    /**
+     * 获取正在定义中模块
+     * 
+     * @param {string} id 模块标识
+     * @return {Object}
+     */
+    function mod_getDefining( id ) {
+        return mod_definingModule[ id ];
+    }
+
+    /**
+     * 当前script中的define集合
+     * 
+     * @inner
+     * @type {Array}
+     */
+    var currentScriptDefines = [];
+
+    var BUILDIN_MODULE = {
+        require : 1,
+        exports : 1,
+        module  : 1
+    };
 
     /**
      * 定义模块
@@ -205,19 +224,10 @@ console.log( 'define ' + id );
                     break;
             }
         }
-
-        // if ( ie && !id ) {
-        //     var scripts = document.getElementsByTagName('script');
-        //     var scriptLen = scripts.length;
-        //     var interactiveScript;
-        //     while ( scriptLen-- ) {
-        //         interactiveScript = scripts[ scriptLen ];
-        //         if ( interactiveScript.readyState == 'interactive' ) {
-        //             break;
-        //         }
-        //     }
-        //     id = interactiveScript.getAttribute( 'data-require-id' );
-        // }
+        
+        if ( !id && getDocument().attachEvent && (!isOpera()) ) {
+            id = getCurrentScript().getAttribute( 'data-require-id' );
+        }
 
         currentScriptDefines.push( {
             id      : id,
@@ -226,120 +236,90 @@ console.log( 'define ' + id );
         } );
     }
 
-    function finishDefine( arg ) {
+    /**
+     * 完成模块定义
+     * 
+     * @inner
+     */
+    function completeDefine( currentId ) {
         var requireModules = [];
-        var defineIds = [];
+        
         each(
             currentScriptDefines,
             function ( defineItem, defineIndex ) {
-                var id = defineItem.id || arg.moduleId;
-                var deps = defineItem.deps;
+                var id = defineItem.id || currentId;
+                var depends = defineItem.deps;
                 var factory = defineItem.factory;
-                defineItem.id = id;
-                defineIds.push( id );
-                if ( modules.exists( id ) ) {
-                    throw { message: id + ' is exist!' };
+                
+                if ( mod_getDefining( id ) || mod_exists( id ) ) {
+                    return;
                 }
 
-                // process dependencies
-                var module = { 
-                    id: id, 
-                    exports: {}, 
-                    factory: defineItem.factory 
-                };
-
-                module.buildinModule = {
-                    require : function ( requireId, callback ) {
-                        return require( resolveId( id, requireId ), callback )
-                    },
-                    exports : module.exports,
-                    module  : module
-                };
-                modules.addDefining( id, module );
-
-                // init depends
-                var depends = [];
-                if ( !(deps instanceof Array) || deps.length == 0 ) {
-                    deps = [ 'require', 'exports', 'module' ];
+                // 处理依赖声明
+                // 未包含dependencies参数时，默认为['require', 'exports', 'module']
+                if ( !(depends instanceof Array) || depends.length == 0 ) {
+                    depends = [ 'require', 'exports', 'module' ];
                 }
-                module.factoryDependencies = deps;
-                var len = deps.length;
-                while ( len-- ) {
-                    deps[ len ] = resolveId( id, deps[ len ] );
-                }
-                depends.push.apply( depends, deps );
-
-                // find require where in factory body
-                var matches;
-                var factoryBody = factory ? factory.toString() : '';
-                var requireRule = /require\(\s*(['"'])([^'"]+)\1\s*\)/g
-                while ( ( matches = requireRule.exec( factoryBody ) ) ) {
-                    depends.push( matches[ 2 ] );
-                }
-
-                // exclude internal module & circle dependency
                 var len = depends.length;
                 while ( len-- ) {
-                    var dependName = resolveId( id, depends[ len ] );
-                    if ( dependName in module.buildinModule
-                         || isInAfterDefine( defineIndex + 1, dependName )
-                         || isInDependencyChain( id, dependName )
+                    depends[ len ] = normalize( depends[ len ], id );
+                }
+
+                // 处理实际需要加载的依赖
+                var realDepends = [];
+                realDepends.push.apply( realDepends, depends );
+
+                // 分析function body中的require
+                if ( typeof factory == 'function' ) {
+                    var matches;
+                    var factoryBody = factory.toString();
+                    var requireRule = /require\(\s*(['"'])([^'"]+)\1\s*\)/g
+                    while ( ( matches = requireRule.exec( factoryBody ) ) ) {
+                        realDepends.push( matches[ 2 ] );
+                    }
+                }
+
+                // id normalize化，并去除依赖模块。去除的依赖模块有：
+                // 1. 内部模块：require/exports/module
+                // 2. 重复模块：dependencies参数和内部require可能重复
+                // 3. 空模块：dependencies中使用者可能写空
+                // 4. 在当前script中，被定义在后续代码中的模块
+                // 5. 循环依赖模块
+                var len = realDepends.length;
+                var existsDepend = {};
+                while ( len-- ) {
+                    var dependId = normalize( realDepends[ len ], id );
+                    if ( !dependId
+                         || dependId in existsDepend
+                         || dependId in BUILDIN_MODULE
+                         || isInAfterDefine( defineIndex + 1, dependId )
+                         || isInDependencyChain( id, dependId )
                     ) {
-                        depends.splice( len, 1 );
+                        realDepends.splice( len, 1 );
                     }
                     else {
-                        depends[ len ] = dependName;
+                        existsDepend[ dependId ] = 1;
+                        realDepends[ len ] = dependId;
                     }
                 }
 
-                // process dependencies
-                module.dependencies = depends;
-                console.log( id + ' depends')
-                console.log(depends)
+                // 将实际依赖压入加载序列中，后续统一进行require
+                requireModules.push.apply( requireModules, realDepends );
+                mod_define( id, depends, realDepends, factory );
 
-                requireModules.push.apply( requireModules, depends );
-
-                function isInAfterDefine( startIndex, dependName ) {
+                function isInAfterDefine( startIndex, dependId ) {
                     var len = currentScriptDefines.length;
                     for ( ; startIndex < len; startIndex++ ) {
-                        if ( dependName == ( currentScriptDefines[ startIndex ].id || arg.moduleId ) ) {
-                            return true;
+                        var defineId = currentScriptDefines[ startIndex ].id;
+                        if ( dependId == ( defineId || currentId ) ) {
+                            return 1;
                         }
                     }
 
-                    return false;
+                    return 0;
                 }
             }
         );
-
-        function tryDefineModules() {
-            each( 
-                defineIds, 
-                function ( moduleId ) {
-                    modules.define( moduleId );
-                }
-            );
-        }
-        each( 
-            defineIds, 
-            function ( moduleId ) {
-                var module = modules.getDefining( moduleId );
-
-                each(
-                    module.dependencies,
-                    function ( depId ) {
-                        if ( modules.exists( depId ) ) {
-                            return;
-                        }
-                        modules.addDefineListener( depId, function () {
-                            modules.define( moduleId );
-                        } );
-                    }
-                );
-            }
-        );
-        tryDefineModules();
-        
         
         currentScriptDefines.length = 0;
         currentScriptDefines = [];
@@ -348,7 +328,7 @@ console.log( 'define ' + id );
 
 
         function isInDependencyChain( source, target ) {
-            var module = modules.getDefining( target ) || modules.get( target );
+            var module = mod_getDefining( target ) || mod_get( target );
             var depends = module && module.dependencies;
 
             if ( depends ) {
@@ -390,18 +370,18 @@ console.log( 'define ' + id );
         var moduleLoaded = new Array( idLen );
         for ( var i = 0; i < idLen; i++ ) {
             var id = ids[ i ];
-            if ( modules.exists( id ) ) {
+            if ( mod_exists( id ) ) {
                 moduleLoaded[ i ] = 1;
             }
             else {
                 moduleLoaded[ i ] = 0;
-                modules.addDefineListener( id, getModuleAddListener( i ) );
+                mod_addDefinedListener( id, getModuleAddListener( i ) );
                 loadModule( id );
             }
         }
 
         finishRequire();
-        return modules.get( ids[ 0 ] ) || null;
+        return mod_get( ids[ 0 ] ) || null;
 
         /**
          * 获取模块添加完成的事件监听器
@@ -432,7 +412,7 @@ console.log( 'define ' + id );
             if ( allModuleReady && typeof callback == 'function' ) {
                 var callbackArgs = [];
                 for ( var i = 0; i < idLen; i++ ) {
-                    callbackArgs.push( modules.get( ids[ i ] ) );
+                    callbackArgs.push( mod_get( ids[ i ] ) );
                 }
 
                 callback.apply( this, callbackArgs );
@@ -458,40 +438,75 @@ console.log( 'define ' + id );
      * @param {string} moduleId 模块标识
      */
     function loadModule( moduleId ) {
-        if ( modules.exists( moduleId ) 
-             || modules.getDefining( moduleId )
+        if ( mod_exists( moduleId ) 
+             || mod_getDefining( moduleId )
              || loadingModules[ moduleId ]
         ) {
             return;
         }
         
         function loadedListener( evt ) {
+            var readyState = script.readyState;
             if ( typeof readyState == 'undefined'
-                 || readyState == "loaded"
-                 || readyState == "complete"
+                 || /^(loaded|complete)$/.test( readyState )
             ) {
-                finishDefine( { moduleId: moduleId } );
-                delete loadingModules[ moduleId ];
                 script.onload = script.onreadystatechange = null;
+
+                completeDefine( moduleId );
+                delete loadingModules[ moduleId ];
                 script = null;
             }
         }
 
-        // TODO: delete loadingModules
         loadingModules[ moduleId ] = 1;
 
         // create script element
-        var script = document.createElement( 'script' );
+        var script = getDocument().createElement( 'script' );
         script.setAttribute( 'data-require-id', moduleId );
         script.src = getURL( moduleId );
-        if ( ie ) {
-            script.onreadystatechange = loadedListener;
-        }
-        else {
-            script.onload = loadedListener;
-        }
+        script.async = true;
+        script.onreadystatechange = script.onload = loadedListener;
 
         appendScript( script );
+    }
+
+    // 感谢requirejs，通过currentlyAddingScript兼容老旧ie
+    // 
+    // For some cache cases in IE 6-8, the script executes before the end
+    // of the appendChild execution, so to tie an anonymous define
+    // call to the module name (which is stored on the node), hold on
+    // to a reference to this node, but clear after the DOM insertion.
+    var currentlyAddingScript;
+    var interactiveScript;
+
+    /**
+     * 获取当前script标签
+     * 用于ie下define未指定module id时获取id
+     * 
+     * @inner
+     * @return {HTMLDocument}
+     */
+    function getCurrentScript() {
+        if ( currentlyAddingScript ) {
+            return currentlyAddingScript;
+        }
+        else if ( 
+            interactiveScript 
+            && interactiveScript.readyState == 'interactive'
+        ) {
+            return interactiveScript;
+        }
+        else {
+            var scripts = getDocument().getElementsByTagName('script');
+            var scriptLen = scripts.length;
+            while ( scriptLen-- ) {
+                var script = scripts[ scriptLen ];
+                if ( script.readyState == 'interactive' ) {
+                    interactiveScript = script;
+                    return script;
+                }
+            }
+        }
     }
 
     /**
@@ -501,25 +516,24 @@ console.log( 'define ' + id );
      * @param {HTMLScriptElement} script script标签
      */
     function appendScript( script ) {
-        var doc = document;
-        var firstScript = doc.getElementsByTagName( 'script' )[ 0 ];
+        currentlyAddingScript = script;
 
-        if ( firstScript ) {
-            firstScript.parentNode.insertBefore( script, firstScript );
-        }
-        else {
-            var parent = doc.getElementsByTagName( 'head' ) [ 0 ] || doc.body;
-            parent.appendChild( script );
-        }
+        var doc = getDocument();
+        var parent = doc.getElementsByTagName( 'head' ) [ 0 ] || doc.body;
+        parent.appendChild( script );
+        
+        currentlyAddingScript = null;
     }
 
-    function resolveId( currentId, requireId ) {
-        if ( /^\./.test( requireId ) ) {
-            var terms = currentId.split( '/' );
+    
+
+    function normalize( id, baseId ) {
+        if ( /^\./.test( id ) ) {
+            var terms = baseId.split( '/' );
             terms.length = terms.length - 1;
 
             each( 
-                requireId.split( '/' ), 
+                id.split( '/' ), 
                 function ( item ) {
                     switch( item ) {
                         case '..':
@@ -536,7 +550,7 @@ console.log( 'define ' + id );
             return terms.join( '/' );
         }
 
-        return requireId;
+        return id;
     }
 
     /**
@@ -554,18 +568,66 @@ console.log( 'define ' + id );
         }
     }
 
+    /**
+     * 获取document对象
+     * 
+     * @inner
+     * @return {HTMLDocument}
+     */
+    function getDocument() {
+        return global.document;
+    }
+
+    /**
+     * 判断是否opera
+     * 
+     * @inner
+     * @return {boolean}
+     */
+    function isOpera() {
+        return global.opera && global.opera.toString() === '[object Opera]';
+    }
+
+    function forceMixin( target, source ) {
+        for ( var key in source ) {
+            if ( source.hasOwnProperty( key ) ) {
+                var value = source[ key ];
+                var targetValue = target[ key ];
+
+                switch ( typeof value ) {
+                    case 'number':
+                    case 'string':
+                    case 'boolean':
+                        target[ key ] = value;
+                        break;
+                    default: 
+                        if ( value instanceof Array ) {
+                            if ( !(targetValue instanceof Array) ) {
+                                target[ key ] = targetValue = [];
+                            }
+
+                            targetValue.push.apply( targetValue, value );
+                        }
+                        else {
+                            forceMixin( targetValue, value );
+                        }
+                }
+            }
+        }
+    }
+
     // TODO: comform require spec[ https://github.com/amdjs/amdjs-api/wiki/require ]
-    var CONF = { 
-        baseUrl: './' 
+    var requireConf = { 
+        baseUrl : './',
+        paths   : {} 
     };
 
     require.config = function ( conf ) {
-        for ( var key in conf ) {
-            CONF[ key ] = conf[ key ];
-        }
+        forceMixin( requireConf, conf );
     };
+
     function getURL( id ) {
-        return CONF.baseUrl + id + '.js';
+        return requireConf.baseUrl + id + '.js';
     }
-})( window );
+})( this );
 
