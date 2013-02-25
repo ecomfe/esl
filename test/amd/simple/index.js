@@ -1,4 +1,4 @@
-define( 'amd/simple/index', function () {
+define( 'amd/simple/index', function () {console.log('module')
     return {
         name: 'amd/simple/index'
     };

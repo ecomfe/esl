@@ -4,7 +4,7 @@ define(
         return {
             name: 'amd/relativeDependency/index',
             check: function () {
-                return cat.check() && cat.name == 'amd/relativeDependency/inner/cat'
+                return cat.name == 'amd/relativeDependency/inner/cat'
             }
         };
     }

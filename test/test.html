@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8">
+<meta charset="UTF-8" />
 <title>loader test</title>
 
-<script src="../require.js"></script>
-
+<script src="../src/js/esl.js"></script>
+<!--script src="../require.js"></script-->
 <style>
 .uncheck,
 .checking,
@@ -108,7 +108,24 @@
 </table>
 
 <script>
+
+
 (function () {
+
+    if ( !window.console ) {
+        var text = document.createElement( 'textarea' );
+        text.style.width = "800px";
+        text.style.height = "400px";
+        if ( !/[\?|]console/.test( location.search ) ) {
+            text.style.display = 'none';
+        }
+        document.body.appendChild( text );
+        window.console = { log: function ( str ) {
+            text.value += '\n' + str;
+        } };
+    }
+
+
     document.body.onclick = function ( e ) {
         e = e || window.event;
         var target = e.srcElement || e.target;
@@ -131,7 +148,7 @@
         return td;
     }
 
-    function checking( target ) {
+    function checking( target, callback ) {
         var stateTd = getStateTd( target );
         var moduleId = target.value + '/index';
         stateTd.className = 'checking';
@@ -148,8 +165,28 @@
             else {
                 stateTd.className = 'fail';
             }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
         } );
     }
+
+
+
+    var buttons = document.getElementsByTagName( 'input' )
+    var index = 0;
+    var len = buttons.length;
+    function checkNext() {
+        if ( index < len ) {
+            checking( buttons[ index++ ], checkNext );
+        }
+    }
+    
+    if ( /[\?|]autostart/.test( location.search ) ) {
+        checkNext();
+    }
+    
 })();
 </script>
 </body>

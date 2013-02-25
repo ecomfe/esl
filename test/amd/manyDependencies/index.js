@@ -1,10 +1,9 @@
 define( 
-    'amd/manyDependencies/index', 
     [ 
-        'amd/manyDependencies/cat', 
-        'amd/manyDependencies/dog',
-        'amd/manyDependencies/tiger',
-        'amd/manyDependencies/lion',
+        './cat', 
+        './dog',
+        './tiger',
+        './lion'
     ], 
     function ( cat, dog, tiger ) {
         var lion = require( 'amd/manyDependencies/lion' );

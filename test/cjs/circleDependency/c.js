@@ -1,7 +1,6 @@
 define( 
     'cjs/circleDependency/c',
     function ( require, exports, module ) {
-        var c = require( './c' );
         return {
             name: 'cjs/circleDependency/c',
             check: function () {
