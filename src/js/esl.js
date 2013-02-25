@@ -3,8 +3,6 @@
  * @author errorrik(errorrik@gmail.com)
  */
 
-// TODO: sweep code
-
 
 var define;
 var require;
@@ -81,9 +79,7 @@ var require;
         function initModule() {
             // 构造factory参数
             var buildinModule = {
-                require : function ( requireId, callback ) {
-                    return require( normalize( requireId, id ), callback )
-                },
+                require : createLocalRequire( id ),
                 exports : module.exports,
                 module  : module
             };
@@ -110,19 +106,35 @@ var require;
             delete mod_definingModule[ id ];
 
             // 触发defined事件
-            var listeners = mod_definedListener[ id ];
-            var len = listeners instanceof Array && listeners.length;
-            
-            if ( len ) {
-                for ( var i = 0; i < len; i++ ) {
-                    listeners[ i ]();
-                }
-                listeners.length = 0;
-            }
-
-            // 进行listener清理
-            delete mod_definedListener[ id ];
+            mod_fireDefined( id );
         }
+    }
+
+    function createLocalRequire( baseId ) {
+        function req( requireId, callback ) {console.log(baseId)
+            return require( normalize( requireId, baseId ), callback, baseId );
+        }
+
+        req.toUrl = function ( name ) {
+            return toUrl( name, baseId );
+        };
+
+        return req;
+    }
+
+    function mod_fireDefined( id ) {
+        var listeners = mod_definedListener[ id ];
+        var len = listeners instanceof Array && listeners.length;
+        
+        if ( len ) {
+            for ( var i = 0; i < len; i++ ) {
+                listeners[ i ]();
+            }
+            listeners.length = 0;
+        }
+
+        // 进行listener清理
+        delete mod_definedListener[ id ];
     }
 
     /**
@@ -142,7 +154,11 @@ var require;
      * @return {Object}
      */
     function mod_get( id ) {
-        return mod_definedModule[ id ] && mod_definedModule[ id ].exports;
+        if ( mod_exists( id ) ) {
+            return mod_definedModule[ id ].exports;
+        }
+
+        return null;
     }
 
     /**
@@ -243,6 +259,7 @@ var require;
      */
     function completeDefine( currentId ) {
         var requireModules = [];
+        var requireResources = [];
         
         each(
             currentScriptDefines,
@@ -324,7 +341,9 @@ var require;
         currentScriptDefines.length = 0;
         currentScriptDefines = [];
         
-        require( requireModules, new Function() );
+        require( requireModules, function () {
+            // TODO: require resource
+        } );
 
 
         function isInDependencyChain( source, target ) {
@@ -351,75 +370,113 @@ var require;
      * 
      * @param {string|Array} moduleId 模块名称或模块名称列表
      * @param {Function=} callback 获取模块完成时的回调函数
-     * @return {Object} 如果模块没ready需要下载，则返回null
+     * @return {Object}
      */
     function require( moduleId, callback ) {
-        var ids;
         if ( typeof moduleId == 'string' ) {
-            ids = [ moduleId ];
-        }
-        else if ( moduleId instanceof Array ) {
-            ids = moduleId.slice( 0 );
-        }
-
-        if ( !ids ) {
-            return null;
-        }
-
-        var idLen = ids.length;
-        var moduleLoaded = new Array( idLen );
-        for ( var i = 0; i < idLen; i++ ) {
-            var id = ids[ i ];
-            if ( mod_exists( id ) ) {
-                moduleLoaded[ i ] = 1;
+            if ( !mod_exists( moduleId ) ) {
+                throw { message: moduleId + ' is not exists!' };
             }
-            else {
-                moduleLoaded[ i ] = 0;
-                mod_addDefinedListener( id, getModuleAddListener( i ) );
-                loadModule( id );
-            }
+
+            return mod_get( moduleId );
         }
 
-        finishRequire();
-        return mod_get( ids[ 0 ] ) || null;
+        if ( !( moduleId instanceof Array ) || moduleId.length == 0 ) {
+            return;
+        }
+
+        callback = callback || new Function();
+        var baseId = arguments[ 2 ] || '';
+        each(
+            moduleId,
+            function ( id ) {
+                mod_addDefinedListener( id, tryFinishRequire );
+                if ( id.indexOf( '!' ) > 0 ) {
+                    loadPlugin( id, baseId );
+                }
+                else {
+                    loadModule( id, baseId );
+                }
+            }
+        );
 
         /**
-         * 获取模块添加完成的事件监听器
-         * 
-         * @inner
-         * @param {number} index 模块在依赖数组中的索引
-         * @return {Function}
-         */
-        function getModuleAddListener( index ) {
-            return function () { 
-                moduleLoaded[ index ] = 1;
-                finishRequire();
-            };
-        }
-
-        /**
-         * 完成require，调用callback
+         * 尝试完成require，调用callback
          * 在模块与其依赖模块都加载完时调用
          * 
          * @inner
          */
-        function finishRequire() {
-            var allModuleReady = 1;
-            for ( var i = 0; i < idLen; i++ ) {
-                allModuleReady = allModuleReady && moduleLoaded[ i ];
-            }
+        function tryFinishRequire() {
+            var allDefined = 1;
+            var callbackArgs = [];
+            each(
+                moduleId,
+                function ( id ) {
+                    var module = mod_get( id );
+                    if ( module == null ) {
+                        allDefined = 0;
+                        return false;
+                    }
 
-            if ( allModuleReady && typeof callback == 'function' ) {
-                var callbackArgs = [];
-                for ( var i = 0; i < idLen; i++ ) {
-                    callbackArgs.push( mod_get( ids[ i ] ) );
+                    callbackArgs.push( module )
                 }
+            );
 
-                callback.apply( this, callbackArgs );
+            if ( allDefined ) {
+                callback.apply( global, callbackArgs );
             }
         }
+
+        tryFinishRequire();
     }
 
+    require.toUrl = function ( name ) {
+        return toUrl( name, '' );
+    };
+
+    function toUrl( name, baseId ) {
+        if ( /^\.{1,2}/.test( name ) ) {
+            var basePath = baseId.split( '/' );
+            var namePath = name.split( '/' );
+            var baseLen = basePath.length - 1;
+            var nameLen = namePath.length;
+            var cutBaseTerms = 0;
+            var cutNameTerms = 0;
+
+
+            pathLoop: for ( var i = 0; i < nameLen; i++ ) {
+                var term = namePath[ i ];
+                switch ( term ) {
+                    case '..':
+                        if ( cutBaseTerms < baseLen - 1 ) {
+                            cutBaseTerms++;
+                            cutNameTerms++;
+                        }
+                        else {
+                            break pathLoop;
+                        }
+                        break;
+                    case '.':
+                        cutNameTerms++;
+                        break;
+                    default:
+                        break pathLoop;
+                }
+            }
+
+            basePath.length = baseLen - cutBaseTerms;
+            namePath = namePath.slice( cutNameTerms );
+
+            basePath.push.apply( basePath, namePath );
+            return requireConf.baseUrl + basePath.join( '/' );
+        }
+
+        return name;
+    };
+
+    define.amd = {
+        multiversion: true
+    };
     global.define = define;
     global.require = require;
 
@@ -461,13 +518,46 @@ var require;
         loadingModules[ moduleId ] = 1;
 
         // create script element
+        // TODO: 解决ie10的重复触发问题
         var script = getDocument().createElement( 'script' );
         script.setAttribute( 'data-require-id', moduleId );
-        script.src = getURL( moduleId );
+        script.src = id2Path( moduleId );
         script.async = true;
         script.onreadystatechange = script.onload = loadedListener;
 
         appendScript( script );
+    }
+
+    function mod_addPluginResource( pluginId, exports ) {
+        mod_definedModule[ pluginId ] = {
+            exports: exports || true
+        };
+
+        mod_fireDefined( pluginId );
+    }
+
+    function loadPlugin( pluginId, baseId ) {console.log( baseId)
+        var separatorIndex = pluginId.indexOf( '!' );
+        var pluginModuleId = pluginId.slice( 0, separatorIndex );
+        var resourceId = pluginId.slice( separatorIndex + 1 );
+        var plugin = mod_get( pluginModuleId );
+
+        function loadResource( plugin ) {
+            plugin.load( 
+                resourceId, 
+                createLocalRequire( baseId ),
+                function ( value ) {
+                    mod_addPluginResource( pluginId, value );
+                }
+            );
+        }
+
+        if ( !plugin ) {
+            require( [ pluginModuleId ], loadResource ); 
+        }
+        else {
+            loadResource( plugin );
+        }
     }
 
     // 感谢requirejs，通过currentlyAddingScript兼容老旧ie
@@ -588,46 +678,54 @@ var require;
         return global.opera && global.opera.toString() === '[object Opera]';
     }
 
-    function forceMixin( target, source ) {
-        for ( var key in source ) {
-            if ( source.hasOwnProperty( key ) ) {
-                var value = source[ key ];
-                var targetValue = target[ key ];
-
-                switch ( typeof value ) {
-                    case 'number':
-                    case 'string':
-                    case 'boolean':
-                        target[ key ] = value;
-                        break;
-                    default: 
-                        if ( value instanceof Array ) {
-                            if ( !(targetValue instanceof Array) ) {
-                                target[ key ] = targetValue = [];
-                            }
-
-                            targetValue.push.apply( targetValue, value );
-                        }
-                        else {
-                            forceMixin( targetValue, value );
-                        }
-                }
-            }
-        }
-    }
-
-    // TODO: comform require spec[ https://github.com/amdjs/amdjs-api/wiki/require ]
     var requireConf = { 
         baseUrl : './',
-        paths   : {} 
+        paths   : {},
+        config  : {},
+        map     : {}
     };
 
     require.config = function ( conf ) {
-        forceMixin( requireConf, conf );
+        // 原先采用force和deep的mixin方案
+        // 后来考虑到如果使用者将require.config写在多个地方
+        // 打包分析需要考虑合并以及合并顺序问题，比较混乱
+        // 又回归最简单的对象拷贝方案实现
+        for ( var key in conf ) {
+            if ( conf.hasOwnProperty( key ) ) {
+                requireConf[ key ] = conf[ key ];
+            }
+        }
     };
 
-    function getURL( id ) {
-        return requireConf.baseUrl + id + '.js';
+    function id2Path( id ) {
+        var path = id;
+        for ( var key in requireConf.paths ) {
+            if ( isPrefix( key, id ) ) {
+                path = id.replace( key, requireConf.paths[ key ] );
+            }
+        }
+
+        if ( !/^([a-z]{3,8}:)?\//.test( path ) ) {
+            path = requireConf.baseUrl + path;
+        }
+        return path + '.js';
+    }
+
+    function isPrefix( prefix, id ) {
+        var prefixTerms = prefix.split( '/' );
+        var idTerms = id.split( '/' );
+        var len = prefixTerms.length;
+
+        if ( len > idTerms.length ) {
+            return 0;
+        }
+
+        for ( var i = 0; i < len; i++ ) {
+            if ( prefixTerms[ i ] != idTerms[ i ] ) {
+                return 0;
+            }
+        }
+
+        return 1;
     }
 })( this );
-
