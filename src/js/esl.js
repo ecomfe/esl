@@ -3,6 +3,9 @@
  * @author errorrik(errorrik@gmail.com)
  */
 
+// TODO: 整理代码
+// TODO: IE性能优化
+// TODO: 支持map配置
 
 var define;
 var require;
@@ -111,8 +114,9 @@ var require;
     }
 
     function createLocalRequire( baseId ) {
-        function req( requireId, callback ) {console.log(baseId)
-            return require( normalize( requireId, baseId ), callback, baseId );
+        var normalize = getNormalizer( baseId );
+        function req( requireId, callback ) {
+            return require( normalize( requireId ), callback, baseId );
         }
 
         req.toUrl = function ( name ) {
@@ -204,6 +208,19 @@ var require;
         module  : 1
     };
 
+    function parseId( id ) {
+        var match = /^([-_a-z0-9\.]+(\/[-_a-z0-9\.]+)*)(!.*)?$/i.exec ( id );
+        if ( match && match.length > 0 ) {
+            var resourceId = match[ 3 ] ? match[ 3 ].slice( 1 ) : '';
+            return {
+                module   : match[ 1 ],
+                resource : resourceId
+            };
+        }
+
+        debugger
+    }
+
     /**
      * 定义模块
      * 
@@ -258,92 +275,126 @@ var require;
      * @inner
      */
     function completeDefine( currentId ) {
+        var defines = currentScriptDefines.slice( 0 );
         var requireModules = [];
-        var requireResources = [];
-        
+        var pluginModules = [];
+
+        function isInAfterDefine( startIndex, dependId ) {
+            var len = defines.length;
+            for ( ; startIndex < len; startIndex++ ) {
+                var defineId = defines[ startIndex ].id;
+                if ( dependId == ( defineId || currentId ) ) {
+                    return 1;
+                }
+            }
+
+            return 0;
+        }
+
         each(
-            currentScriptDefines,
+            defines,
             function ( defineItem, defineIndex ) {
                 var id = defineItem.id || currentId;
                 var depends = defineItem.deps;
                 var factory = defineItem.factory;
+                var normalize = getNormalizer( id );
                 
                 if ( mod_getDefining( id ) || mod_exists( id ) ) {
                     return;
                 }
 
-                // 处理依赖声明
-                // 未包含dependencies参数时，默认为['require', 'exports', 'module']
+                // 处理define中编写的依赖声明
+                // 默认为['require', 'exports', 'module']
                 if ( !(depends instanceof Array) || depends.length == 0 ) {
                     depends = [ 'require', 'exports', 'module' ];
                 }
-                var len = depends.length;
-                while ( len-- ) {
-                    depends[ len ] = normalize( depends[ len ], id );
-                }
+                defineItem.deps = depends;
 
                 // 处理实际需要加载的依赖
                 var realDepends = [];
+                defineItem.realDeps = realDepends;
                 realDepends.push.apply( realDepends, depends );
 
                 // 分析function body中的require
                 if ( typeof factory == 'function' ) {
-                    var matches;
+                    var match;
                     var factoryBody = factory.toString();
                     var requireRule = /require\(\s*(['"'])([^'"]+)\1\s*\)/g
-                    while ( ( matches = requireRule.exec( factoryBody ) ) ) {
-                        realDepends.push( matches[ 2 ] );
+                    while ( ( match = requireRule.exec( factoryBody ) ) ) {
+                        realDepends.push( match[ 2 ] );
                     }
                 }
 
-                // id normalize化，并去除依赖模块。去除的依赖模块有：
-                // 1. 内部模块：require/exports/module
-                // 2. 重复模块：dependencies参数和内部require可能重复
-                // 3. 空模块：dependencies中使用者可能写空
-                // 4. 在当前script中，被定义在后续代码中的模块
-                // 5. 循环依赖模块
-                var len = realDepends.length;
-                var existsDepend = {};
-                while ( len-- ) {
-                    var dependId = normalize( realDepends[ len ], id );
-                    if ( !dependId
-                         || dependId in existsDepend
-                         || dependId in BUILDIN_MODULE
-                         || isInAfterDefine( defineIndex + 1, dependId )
-                         || isInDependencyChain( id, dependId )
-                    ) {
-                        realDepends.splice( len, 1 );
+                // 分析resource加载的plugin module id
+                each(
+                    realDepends,
+                    function ( dependId ) {
+                        var idInfo = parseId( dependId );
+                        if ( idInfo.resource ) {
+                            pluginModules.push( normalize( idInfo.module ) );
+                        }
                     }
-                    else {
-                        existsDepend[ dependId ] = 1;
-                        realDepends[ len ] = dependId;
+                );
+            }
+        );
+
+        function pretreatAndDefine() {
+            each(
+                defines,
+                function ( defineItem, defineIndex ) {
+                    var id = defineItem.id || currentId;
+                    var depends = defineItem.deps;
+                    var realDepends = defineItem.realDeps;
+                    var normalize = getNormalizer( id );
+
+                    // 对参数中声明的依赖进行normalize
+                    var len = depends.length;
+                    while ( len-- ) {
+                        depends[ len ] = normalize( depends[ len ] );
                     }
-                }
 
-                // 将实际依赖压入加载序列中，后续统一进行require
-                requireModules.push.apply( requireModules, realDepends );
-                mod_define( id, depends, realDepends, factory );
-
-                function isInAfterDefine( startIndex, dependId ) {
-                    var len = currentScriptDefines.length;
-                    for ( ; startIndex < len; startIndex++ ) {
-                        var defineId = currentScriptDefines[ startIndex ].id;
-                        if ( dependId == ( defineId || currentId ) ) {
-                            return 1;
+                    // 依赖模块id normalize化，并去除必要的依赖。去除的依赖模块有：
+                    // 1. 内部模块：require/exports/module
+                    // 2. 重复模块：dependencies参数和内部require可能重复
+                    // 3. 空模块：dependencies中使用者可能写空
+                    // 4. 在当前script中，被定义在后续代码中的模块
+                    // 5. 循环依赖模块
+                    var len = realDepends.length;
+                    var existsDepend = {};
+                    while ( len-- ) {
+                        var dependId = normalize( realDepends[ len ] );
+                        if ( !dependId
+                             || dependId in existsDepend
+                             || dependId in BUILDIN_MODULE
+                             || isInAfterDefine( defineIndex + 1, dependId )
+                             || isInDependencyChain( id, dependId )
+                        ) {
+                            realDepends.splice( len, 1 );
+                        }
+                        else {
+                            existsDepend[ dependId ] = 1;
+                            realDepends[ len ] = dependId;
                         }
                     }
 
-                    return 0;
+                    // 将实际依赖压入加载序列中，后续统一进行require
+                    requireModules.push.apply( requireModules, realDepends );
+                    mod_define( id, depends, realDepends, defineItem.factory );
                 }
-            }
-        );
+            );
+
+            require( requireModules, new Function() );
+        }
         
+        if ( pluginModules.length ) {
+            require( pluginModules, pretreatAndDefine );
+        }
+        else {
+            pretreatAndDefine();
+        }
+
         currentScriptDefines.length = 0;
         currentScriptDefines = [];
-        
-        require( requireModules, function () {
-            // TODO: require resource
-        } );
 
 
         function isInDependencyChain( source, target ) {
@@ -528,7 +579,7 @@ var require;
         appendScript( script );
     }
 
-    function mod_addPluginResource( pluginId, exports ) {
+    function mod_addPluginResource( pluginId, exports ) {console.log( pluginId)
         mod_definedModule[ pluginId ] = {
             exports: exports || true
         };
@@ -536,7 +587,7 @@ var require;
         mod_fireDefined( pluginId );
     }
 
-    function loadPlugin( pluginId, baseId ) {console.log( baseId)
+    function loadPlugin( pluginId, baseId ) {
         var separatorIndex = pluginId.indexOf( '!' );
         var pluginModuleId = pluginId.slice( 0, separatorIndex );
         var resourceId = pluginId.slice( separatorIndex + 1 );
@@ -587,7 +638,7 @@ var require;
             return interactiveScript;
         }
         else {
-            var scripts = getDocument().getElementsByTagName('script');
+            var scripts = getDocument().getElementsByTagName( 'script' );
             var scriptLen = scripts.length;
             while ( scriptLen-- ) {
                 var script = scripts[ scriptLen ];
@@ -616,31 +667,49 @@ var require;
     }
 
     
+    function getNormalizer( baseId ) {
 
-    function normalize( id, baseId ) {
-        if ( /^\./.test( id ) ) {
-            var terms = baseId.split( '/' );
-            terms.length = terms.length - 1;
+        function normalize( id ) {
+            if ( /^\./.test( id ) ) {
+                var terms = baseId.split( '/' );
+                terms.length = terms.length - 1;
 
-            each( 
-                id.split( '/' ), 
-                function ( item ) {
-                    switch( item ) {
-                        case '..':
-                            terms.splice( terms.length - 1, 1 );
-                            break;
-                        case '.':
-                            break;
-                        default:
-                            terms.push( item );
+                each( 
+                    id.split( '/' ), 
+                    function ( item ) {
+                        switch( item ) {
+                            case '..':
+                                terms.splice( terms.length - 1, 1 );
+                                break;
+                            case '.':
+                                break;
+                            default:
+                                terms.push( item );
+                        }
                     }
-                }
-            );
+                );
 
-            return terms.join( '/' );
+                return terms.join( '/' );
+            }
+
+            return id;
         }
 
-        return id;
+        return function ( id ) {
+            var idInfo = parseId( id );
+            var moduleId = normalize( idInfo.module );
+            var resourceId = idInfo.resource;
+            if ( resourceId ) {
+                var module = mod_get( moduleId );
+                resourceId = module.normalize
+                    ? module.normalize( resourceId, normalize )
+                    : normalize( resourceId );
+                
+                return moduleId + '!' + resourceId;
+            }
+
+            return moduleId;
+        };
     }
 
     /**
