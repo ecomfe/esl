@@ -5,19 +5,48 @@
 <title>loader test</title>
 
 <script src="../src/js/esl.js"></script>
-<!--script src="../require.js"></script-->
+<!--script src="../require.src.js"></script-->
+<script>
+require.config( {
+    baseUrl: '/test/',
+    paths: {
+        'css': '../src/js/css',
+        'js': '../src/js/js',
+    },
+    map: {
+        'usecjs': {
+            simple: 'cjs/simple'
+        },
+        'usecjs/change2amd': {
+            simple: 'amd/simple'
+        },
+    }
+    // ,
+    // packages: [
+    //     'pkgclassic/1.0',
+    //     {
+    //         name: 'pkgsetmain',
+    //         location: 'pkgsetmain/2.0',
+    //         main: 'index'
+    //     }
+    // ]
+} );
+</script>
 <style>
 .uncheck,
 .checking,
 .pass,
 .fail {
-    width: 100px;
+    width: 60px;
 }
 
 .uncheck { background: #eee; }
 .checking { background: yellow; }
 .pass { background: green; }
 .fail { background: red; }
+
+.cssplugin,
+.cssplugin-local{ visibility: hidden; }
 </style>
 </head>
 
@@ -105,10 +134,113 @@
         <td><input value="cjs/combine" type="button"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <th colspan="2" align="left">CSS Plugin:</th>
+    </tr>
+    <tr>
+        <td><input value="globalLoadCss" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="localLoadCss" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Conf map:</th>
+    </tr>
+    <tr>
+        <td><input value="mapVersion" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="longMapFirst" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="nomapGlobal" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <!--tr>
+        <th colspan="2" align="left">Conf packages:</th>
+    </tr>
+    <tr>
+        <td><input value="stringPackage" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="objectPackage" type="button"></td>
+        <td class="uncheck"></td>
+    </tr-->
 </table>
 
 <script>
+function checkNormalModule( name, stateTd, module, callback ) {
+    if ( 
+        module 
+        && module.name == name
+        && ( typeof module.check != 'function' 
+             || module.check() )
+    ) {
+        stateTd.className = 'pass';
+    }
+    else {
+        stateTd.className = 'fail';
+    }
 
+    if ( typeof callback == 'function' ) {
+        setTimeout( callback, 1 );
+    }
+}
+
+function nomapGlobal( stateTd, callback ) {
+    require( [ 'simple/index' ], function ( module ) {
+        checkNormalModule( 'simple/index', stateTd, module, callback );
+    } );
+}
+
+function longMapFirst( stateTd, callback ) {
+    require( [ 'usecjs/change2amd' ], function ( module ) {
+        checkNormalModule( 'usecjs/change2amd', stateTd, module, callback );
+    } );
+}
+
+function mapVersion( stateTd, callback ) {
+    require( [ 'usecjs/index' ], function ( module ) {
+        checkNormalModule( 'usecjs/index', stateTd, module, callback );
+    } );
+}
+
+function objectPackage( stateTd, callback ) {
+    require( [ 'pkgsetmain' ], function ( module ) {
+        checkNormalModule( 'pkgsetmain', stateTd, module, callback );
+    } );
+}
+
+function stringPackage( stateTd, callback ) {
+    require( [ 'pkgclassic' ], function ( module ) {
+        checkNormalModule( 'pkgclassic', stateTd, module, callback );
+    } );
+}
+
+function globalLoadCss( stateTd, callback ) {
+    stateTd.className = 'pass cssplugin';
+
+    require( [ 'css!cssplugin/style.css' ], function () {
+        callback();
+    } );
+}
+
+function localLoadCss( stateTd, callback ) {
+    stateTd.className = 'pass cssplugin-local';
+
+    require( [ 'cssplugin/index' ], function ( mod ) {
+        if ( mod.name != 'cssplugin/index' ) {
+            stateTd.className = 'fail';
+        }
+
+        callback();
+    } );
+}
 
 (function () {
 
@@ -150,26 +282,19 @@
 
     function checking( target, callback ) {
         var stateTd = getStateTd( target );
-        var moduleId = target.value + '/index';
         stateTd.className = 'checking';
+        var value = target.value;
 
-        require( [ moduleId ], function ( module ) {
-            if ( 
-                module 
-                && module.name == moduleId 
-                && ( typeof module.check != 'function' 
-                     || module.check() )
-            ) {
-                stateTd.className = 'pass';
-            }
-            else {
-                stateTd.className = 'fail';
-            }
+        if ( window[ value ] ) {
+            window[ value ]( stateTd, callback );
+        }
+        else {
+            var moduleId = target.value + '/index';
 
-            if ( typeof callback == 'function' ) {
-                setTimeout( callback, 1 );
-            }
-        } );
+            require( [ moduleId ], function ( module ) {
+                checkNormalModule( moduleId, stateTd, module, callback );
+            } );
+        }
     }
 
 
@@ -188,6 +313,8 @@
     }
     
 })();
+
+
 </script>
 </body>
 </html>
