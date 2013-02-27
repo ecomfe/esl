@@ -1,10 +1,10 @@
 /**
- * @file ECOMFE标准加载器，符合AMD规范
+ * ESL (Enterprise/ECOMFE Standard Loader)
+ * Copyright 2013 Baidu Inc. All rights reserved.
+ * 
+ * @file Browser端标准加载器，符合AMD规范
  * @author errorrik(errorrik@gmail.com)
  */
-
-// TODO: 整理代码
-// TODO: 支持map配置
 
 var define;
 var require;
@@ -42,6 +42,9 @@ var require;
      * 
      * @inner
      * @param {string} id 模块标识
+     * @param {Array.<string>} factoryModules 声明参数模块列表
+     * @param {Array.<string>} dependencies 依赖模块列表
+     * @param {Function} factory 模块定义函数 
      */
     function mod_define( id, factoryModules, dependencies, factory ) {
         var module = {
@@ -288,7 +291,11 @@ var require;
         }
         
         // IE下通过current script的data-require-id获取当前id
-        if ( !id && getDocument().attachEvent && (!isOpera()) ) {
+        var opera = global.opera;
+        if ( !id 
+            && getDocument().attachEvent 
+            && (!(opera && opera.toString() === '[object Opera]')) 
+        ) {
             id = getCurrentScript().getAttribute( 'data-require-id' );
         }
 
@@ -550,10 +557,10 @@ var require;
      * @type {Object}
      */
     var requireConf = { 
-        baseUrl : './',
-        paths   : {},
-        config  : {},
-        map     : {}
+        baseUrl  : './',
+        paths    : {},
+        config   : {},
+        map      : {}
     };
 
     /**
@@ -571,6 +578,8 @@ var require;
                 requireConf[ key ] = conf[ key ];
             }
         }
+
+        mappingIdIndex = null;
     };
 
     /**
@@ -586,44 +595,14 @@ var require;
     /**
      * 将[module ID] + '.extension'格式的字符串转换成url
      * 
+     * @inner
      * @param {string} source 符合描述格式的源字符串
      * @param {string} baseId 当前环境的模块标识
      * @return {string}
      */
     function toUrl( name, baseId ) {
         if ( /^\.{1,2}/.test( name ) ) {
-            var basePath = baseId.split( '/' );
-            var namePath = name.split( '/' );
-            var baseLen = basePath.length - 1;
-            var nameLen = namePath.length;
-            var cutBaseTerms = 0;
-            var cutNameTerms = 0;
-
-            pathLoop: for ( var i = 0; i < nameLen; i++ ) {
-                var term = namePath[ i ];
-                switch ( term ) {
-                    case '..':
-                        if ( cutBaseTerms < baseLen - 1 ) {
-                            cutBaseTerms++;
-                            cutNameTerms++;
-                        }
-                        else {
-                            break pathLoop;
-                        }
-                        break;
-                    case '.':
-                        cutNameTerms++;
-                        break;
-                    default:
-                        break pathLoop;
-                }
-            }
-
-            basePath.length = baseLen - cutBaseTerms;
-            namePath = namePath.slice( cutNameTerms );
-
-            basePath.push.apply( basePath, namePath );
-            return requireConf.baseUrl + basePath.join( '/' );
+            return requireConf.baseUrl + relative2absolute( name, baseId );
         }
 
         return name;
@@ -632,6 +611,7 @@ var require;
     /**
      * 创建local require函数
      * 
+     * @inner
      * @param {number} baseId 当前module id
      * @return {Function}
      */
@@ -790,8 +770,7 @@ var require;
         currentlyAddingScript = script;
 
         var doc = getDocument();
-        var parent = doc.getElementsByTagName( 'head' ) [ 0 ] || doc.body;
-        parent.appendChild( script );
+        (doc.getElementsByTagName('head')[0] || doc.body).appendChild( script );
         
         currentlyAddingScript = null;
     }
@@ -799,49 +778,28 @@ var require;
     /**
      * 创建id normalize函数
      * 
+     * @inner
      * @param {string} baseId 当前环境的模块标识
      * @return {function(string)}
      */
     function createNormalizer( baseId ) {
-        function normalize( id ) {
-            if ( /^\./.test( id ) ) {
-                var terms = baseId.split( '/' );
-                terms.length = terms.length - 1;
-
-                each( 
-                    id.split( '/' ), 
-                    function ( item ) {
-                        switch( item ) {
-                            case '..':
-                                terms.splice( terms.length - 1, 1 );
-                                break;
-                            case '.':
-                                break;
-                            default:
-                                terms.push( item );
-                        }
-                    }
-                );
-
-                return terms.join( '/' );
-            }
-
-            return id;
-        }
-
         return function ( id ) {
             if ( !id ) {
                 return '';
             }
 
             var idInfo = parseId( id );
-            var moduleId = normalize( idInfo.module );
             var resourceId = idInfo.resource;
+            var moduleId = mappingId( 
+                relative2absolute( idInfo.module, baseId ), 
+                baseId
+            );
+            
             if ( resourceId ) {
                 var module = mod_get( moduleId );
                 resourceId = module.normalize
                     ? module.normalize( resourceId, normalize )
-                    : normalize( resourceId );
+                    : relative2absolute( resourceId, baseId );
                 
                 return moduleId + '!' + resourceId;
             }
@@ -876,16 +834,6 @@ var require;
     }
 
     /**
-     * 判断是否opera
-     * 
-     * @inner
-     * @return {boolean}
-     */
-    function isOpera() {
-        return global.opera && global.opera.toString() === '[object Opera]';
-    }
-
-    /**
      * id正则规则表示
      * 
      * @const
@@ -914,35 +862,175 @@ var require;
         return null;
     }
 
-    function id2Path( id ) {
-        var path = id;
-        for ( var key in requireConf.paths ) {
-            if ( isPrefix( key, id ) ) {
-                path = id.replace( key, requireConf.paths[ key ] );
+    /**
+     * 建立模块id map信息索引
+     * 
+     * @inner
+     * @type {Array}
+     */
+    var mappingIdIndex;
+
+    /**
+     * 基于map配置项的id映射
+     * 
+     * @inner
+     * @param {string} id 模块id
+     * @param {string} baseId 当前环境的模块id
+     * @return {string}
+     */
+    function mappingId( id, baseId ) {
+        if ( baseId ) {
+            if ( !mappingIdIndex ) {
+                createMappingIdIndex();
+            }
+
+            each( mappingIdIndex, function ( item ) {
+                if ( item.reg.test( baseId ) ) {
+
+                    each( item.value, function ( mapData ) {
+                        var key = mapData.key;
+                        var rule = createPrefixRegexp( key );
+                        
+                        if ( rule.test( id ) ) {
+                            id = id.replace( key, mapData.value );
+                            return false;
+                        }
+                    } );
+
+                    return false;
+                }
+            } );
+        }
+
+        return id;
+    }
+
+    /**
+     * 建立模块id map信息索引
+     * 
+     * @inner
+     */
+    function createMappingIdIndex() {
+        mappingIdIndex = [];
+        var map = requireConf.map;
+        
+        mappingIdIndex = kv2List( map );
+        mappingIdIndex.sort( function ( a, b ) { 
+            return b.key.length - a.key.length 
+        } );
+
+        each(
+            mappingIdIndex,
+            function ( item ) {
+                var key = item.key;
+                item.value = kv2List( item.value );
+                item.reg = key == '*'
+                    ? /^/
+                    : createPrefixRegexp( key );
+            }
+        );
+    }
+
+    /**
+     * 将对象数据转换成数组，数组每项是带有key和value的Object
+     * 
+     * @inner
+     * @param {Object} source 对象数据
+     * @return {Array.<Object>}
+     */
+    function kv2List( source ) {
+        var list = [];
+        for ( var key in source ) {
+            if ( source.hasOwnProperty( key ) ) {
+                list.push( {
+                    key: key, 
+                    value: source[ key ]
+                } );
             }
         }
 
-        if ( !/^([a-z]{3,8}:)?\//.test( path ) ) {
+        return list;
+    }
+
+    /**
+     * 相对id转换成绝对id
+     * 
+     * @inner
+     * @param {string} id 要转换的id
+     * @param {string} baseId 当前所在环境id
+     * @return {string}
+     */
+    function relative2absolute( id, baseId ) {
+        if ( /^\.{1,2}/.test( id ) ) {
+            var basePath = baseId.split( '/' );
+            var namePath = id.split( '/' );
+            var baseLen = basePath.length - 1;
+            var nameLen = namePath.length;
+            var cutBaseTerms = 0;
+            var cutNameTerms = 0;
+
+            pathLoop: for ( var i = 0; i < nameLen; i++ ) {
+                var term = namePath[ i ];
+                switch ( term ) {
+                    case '..':
+                        if ( cutBaseTerms < baseLen - 1 ) {
+                            cutBaseTerms++;
+                            cutNameTerms++;
+                        }
+                        else {
+                            break pathLoop;
+                        }
+                        break;
+                    case '.':
+                        cutNameTerms++;
+                        break;
+                    default:
+                        break pathLoop;
+                }
+            }
+
+            basePath.length = baseLen - cutBaseTerms;
+            namePath = namePath.slice( cutNameTerms );
+
+            basePath.push.apply( basePath, namePath );
+            return basePath.join( '/' );
+        }
+
+        return id;
+    }
+
+    /**
+     * 将模块id转换成路径
+     * 
+     * @inner
+     * @param {string} id 模块id
+     * @return {string}
+     */
+    function id2Path( id ) {
+        var path = id;
+        var pathConf = requireConf.paths;
+        
+        for ( var key in pathConf ) {
+            if ( createPrefixRegexp( key ).test( id ) ) {
+                path = id.replace( key, pathConf[ key ] );
+            }
+        }
+
+        if ( !/^([a-z]{3,10}:)?\//.test( path ) ) {
             path = requireConf.baseUrl + path;
         }
+
         return path + '.js';
     }
 
-    function isPrefix( prefix, id ) {
-        var prefixTerms = prefix.split( '/' );
-        var idTerms = id.split( '/' );
-        var len = prefixTerms.length;
-
-        if ( len > idTerms.length ) {
-            return 0;
-        }
-
-        for ( var i = 0; i < len; i++ ) {
-            if ( prefixTerms[ i ] != idTerms[ i ] ) {
-                return 0;
-            }
-        }
-
-        return 1;
+    /**
+     * 创建id前缀匹配的正则对象
+     * 
+     * @inner
+     * @param {string} prefix id前缀
+     * @return {RegExp}
+     */
+    function createPrefixRegexp( prefix ) {
+        return new RegExp( '^' + prefix + '(/|$)' );
     }
 })( this );
