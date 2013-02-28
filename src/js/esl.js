@@ -12,7 +12,7 @@ var require;
 (function ( global ) {
     // "mod_"开头的变量或函数为内部模块管理函数
     // 为提高压缩率，不使用function或object包装
-    
+    var require = createLocalRequire( '' );
     /**
      * 已定义模块容器
      * 
@@ -252,7 +252,7 @@ var require;
      * @type {Object}
      */
     var BUILDIN_MODULE = {
-        require : 1,
+        require : require,
         exports : 1,
         module  : 1
     };
@@ -370,7 +370,7 @@ var require;
         // 尝试加载"资源加载所需模块"，后进行第二次处理
         // 需要先加载模块的愿意是：如果模块不存在，无法进行资源id normalize化
         // pretreatAndDefine处理所有依赖，并进行module define
-        require( pluginModules, pretreatAndDefine );
+        nativeRequire( pluginModules, pretreatAndDefine );
 
         /**
          * 判断模块是否在后续的定义中
@@ -426,6 +426,7 @@ var require;
                     // 5. 循环依赖模块
                     var len = realDepends.length;
                     var existsDepend = {};
+                    
                     while ( len-- ) {
                         var dependId = normalize( realDepends[ len ] );
                         if ( !dependId
@@ -448,7 +449,7 @@ var require;
                 }
             );
 
-            require( requireModules, new Function() );
+            nativeRequire( requireModules, new Function() );
         }
 
         /**
@@ -484,7 +485,10 @@ var require;
      * @param {Function=} callback 获取模块完成时的回调函数
      * @return {Object}
      */
-    function require( moduleId, callback ) {
+    function nativeRequire( moduleId, callback, baseId ) {
+        callback = callback || new Function();
+        var baseId = arguments[ 2 ] || '';
+
         // 根据 https://github.com/amdjs/amdjs-api/wiki/require
         // It MUST throw an error if the module has not 
         // already been loaded and evaluated.
@@ -499,17 +503,19 @@ var require;
         if ( !( moduleId instanceof Array ) ) {
             return;
         }
-
-        callback = callback || new Function();
+        
         if ( moduleId.length === 0 ) {
             callback();
             return;
         }
         
-        var baseId = arguments[ 2 ] || '';
         each(
             moduleId,
             function ( id ) {
+                if ( BUILDIN_MODULE[ id ] ) {
+                    return;
+                } 
+
                 mod_addDefinedListener( id, tryFinishRequire );
                 if ( id.indexOf( '!' ) > 0 ) {
                     loadResource( id, baseId );
@@ -534,7 +540,7 @@ var require;
             each(
                 moduleId,
                 function ( id ) {
-                    var module = mod_get( id );
+                    var module = mod_get( id ) || BUILDIN_MODULE[ id ];
                     if ( module == null ) {
                         allDefined = 0;
                         return false;
@@ -578,7 +584,7 @@ var require;
                 requireConf[ key ] = conf[ key ];
             }
         }
-
+        requireConf.baseUrl = requireConf.baseUrl.replace( /\/$/, '' ) + '/';
         mappingIdIndex = null;
     };
 
@@ -618,7 +624,28 @@ var require;
     function createLocalRequire( baseId ) {
         var normalize = createNormalizer( baseId );
         function req( requireId, callback ) {
-            return require( normalize( requireId ), callback, baseId );
+            if ( typeof requireId == 'string' ) {
+                requireId = normalize( requireId );
+                return nativeRequire( requireId, callback, baseId );
+            }
+            else if ( requireId instanceof Array ) {
+                var unloadedPluginModules = [];
+                each( requireId, function ( id ) { 
+                    var idInfo = parseId( id );
+                    var pluginId = normalize( idInfo.module );
+                    if ( idInfo.resource && !mod_exists( pluginId ) ) {
+                        unloadedPluginModules.push( pluginId );
+                    }
+                } );
+                
+                nativeRequire( unloadedPluginModules, function () {
+                    var ids = [];
+                    each( requireId, function ( id ) { ids.push( normalize( id ) ) } );
+                    nativeRequire( ids, callback, baseId );
+                }, baseId );
+            }
+            
+            
         }
 
         req.toUrl = function ( name ) {
@@ -697,7 +724,7 @@ var require;
      * @param {string} pluginAndResource 插件与资源标识
      * @param {string} baseId 当前环境的模块标识
      */
-    function loadResource( pluginAndResource, baseId ) {
+    function loadResource( pluginAndResource, baseId ) {debugger;
         var idInfo = parseId( pluginAndResource );
         var pluginId = idInfo.module;
         var resourceId = idInfo.resource;
@@ -709,12 +736,13 @@ var require;
                 createLocalRequire( baseId ),
                 function ( value ) {
                     mod_addResource( pluginAndResource, value );
-                }
+                },
+                {}
             );
         }
 
         if ( !plugin ) {
-            require( [ pluginId ], load ); 
+            nativeRequire( [ pluginId ], load ); 
         }
         else {
             load( plugin );
@@ -783,7 +811,7 @@ var require;
      * @return {function(string)}
      */
     function createNormalizer( baseId ) {
-        return function ( id ) {
+        function normalize( id ) {
             if ( !id ) {
                 return '';
             }
@@ -798,14 +826,16 @@ var require;
             if ( resourceId ) {
                 var module = mod_get( moduleId );
                 resourceId = module.normalize
-                    ? module.normalize( resourceId, normalize )
+                    ? module.normalize( resourceId, function ( id ) {return relative2absolute(id, baseId)} )
                     : relative2absolute( resourceId, baseId );
                 
                 return moduleId + '!' + resourceId;
             }
-
+            
             return moduleId;
-        };
+        }
+
+        return normalize;
     }
 
     /**
@@ -879,28 +909,26 @@ var require;
      * @return {string}
      */
     function mappingId( id, baseId ) {
-        if ( baseId ) {
-            if ( !mappingIdIndex ) {
-                createMappingIdIndex();
-            }
-
-            each( mappingIdIndex, function ( item ) {
-                if ( item.reg.test( baseId ) ) {
-
-                    each( item.value, function ( mapData ) {
-                        var key = mapData.key;
-                        var rule = createPrefixRegexp( key );
-                        
-                        if ( rule.test( id ) ) {
-                            id = id.replace( key, mapData.value );
-                            return false;
-                        }
-                    } );
-
-                    return false;
-                }
-            } );
+        if ( !mappingIdIndex ) {
+            createMappingIdIndex();
         }
+
+        each( mappingIdIndex, function ( item ) {
+            if ( item.reg.test( baseId ) ) {
+
+                each( item.value, function ( mapData ) {
+                    var key = mapData.key;
+                    var rule = createPrefixRegexp( key );
+                    
+                    if ( rule.test( id ) ) {
+                        id = id.replace( key, mapData.value );
+                        return false;
+                    }
+                } );
+
+                return false;
+            }
+        } );
 
         return id;
     }
@@ -916,6 +944,8 @@ var require;
         
         mappingIdIndex = kv2List( map );
         mappingIdIndex.sort( function ( a, b ) { 
+            if ( b.key == '*' ) return -1;
+            if ( a.key == '*' ) return 1;
             return b.key.length - a.key.length 
         } );
 
@@ -924,6 +954,9 @@ var require;
             function ( item ) {
                 var key = item.key;
                 item.value = kv2List( item.value );
+                item.value.sort(function ( a, b ) { 
+            return b.key.length - a.key.length 
+        });
                 item.reg = key == '*'
                     ? /^/
                     : createPrefixRegexp( key );
@@ -1010,17 +1043,28 @@ var require;
         var path = id;
         var pathConf = requireConf.paths;
         
-        for ( var key in pathConf ) {
-            if ( createPrefixRegexp( key ).test( id ) ) {
-                path = id.replace( key, pathConf[ key ] );
+        createPathsIndex();
+        each( pathsIndex, function ( item ) {
+            var key = item.key;
+            if ( createPrefixRegexp( key ).test( path ) ) {
+                path = path.replace( key, item.value );
+                return false;
             }
-        }
+        } );
 
         if ( !/^([a-z]{3,10}:)?\//.test( path ) ) {
             path = requireConf.baseUrl + path;
         }
 
         return path + '.js';
+    }
+
+    var pathsIndex;
+    function createPathsIndex() {
+        if ( !pathsIndex ) {
+            pathsIndex = kv2List( requireConf.paths );
+            pathsIndex.sort( function ( a, b ) {return b.key.length > a.key.length;} );
+        }
     }
 
     /**
