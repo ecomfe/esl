@@ -101,15 +101,17 @@ var require;
      * 
      * @inner
      * @param {string} id 模块标识
-     * @param {Array.<string>} factoryModules 声明参数模块列表
-     * @param {Array.<string>} dependencies 依赖模块列表
      * @param {Function} factory 模块定义函数 
+     * @param {Array.<string>} factoryArgs 声明参数模块列表
+     * @param {Array.<string>} hardDepends 强依赖模块列表
+     * @param {Array.<string>} depends 依赖模块列表
      */
-    function mod_define( id, factoryModules, dependencies, factory ) {
+    function mod_define( id, factory, factoryArgs, hardDepends, depends ) {
         var module = {
             id           : id,
-            factoryArgs  : factoryModules,
-            dependencies : dependencies || [],
+            factoryArgs  : factoryArgs,
+            hardDeps     : hardDepends,
+            deps         : depends || [],
             factory      : factory,
             exports      : {},
             state        : MODULE_STATE_UNINIT
@@ -136,7 +138,7 @@ var require;
          */
         function isInitReady() {
             var isReady = 1;
-            each( factoryModules, function ( id ) {
+            each( hardDepends, function ( id ) {
                 isReady = id in BUILDIN_MODULE || mod_isInited( id );
                 return isReady;
             } );
@@ -153,11 +155,11 @@ var require;
             if ( mod_isInited( id ) || !isInitReady() ) {
                 return;
             }
-            
+
             // 构造factory参数
             var args = [];
             each( 
-                factoryModules,
+                factoryArgs,
                 function ( moduleId, index ) {
                     args[ index ] = 
                         buildinModule[ moduleId ]
@@ -243,11 +245,14 @@ var require;
      */
     function mod_sweepInitedListener() {
         if ( mod_fireLevel < 1 ) {
-            mod_removeListenerIndex.sort();
-            var len = mod_removeListenerIndex.length;
-            while ( len-- ) {
-                mod_initedListener.splice( mod_removeListenerIndex[ len ], 1 );
-            }
+            mod_removeListenerIndex.sort( function ( a, b ) { return b - a; });
+
+            each( 
+                mod_removeListenerIndex,
+                function ( index ) {
+                    mod_initedListener.splice( index, 1 );
+                }
+            );
             
             mod_removeListenerIndex = [];
         }
@@ -403,6 +408,7 @@ var require;
                 realDepends.push.apply( realDepends, depends );
 
                 // 分析function body中的require
+                // TODO: remove comment
                 if ( typeof factory == 'function' ) {
                     var match;
                     var factoryBody = factory.toString();
@@ -469,16 +475,18 @@ var require;
                 function ( defineItem, defineIndex ) {
                     var id = defineItem.id || currentId;
                     var depends = defineItem.deps;
+                    var hardDepends = depends.slice( 0 );
                     var realDepends = defineItem.realDeps;
                     var normalize = createNormalizer( id );
                     
                     // 对参数中声明的依赖进行normalize
                     // 并且处理参数中声明依赖的循环依赖
-                    var len = depends.length;
+                    var len = hardDepends.length;
                     while ( len-- ) {
-                        depends[ len ] = normalize( depends[ len ] );
-                        if ( isInDependencyChain( id, depends[ len ] ) ) {
-                            depends.splice( len, 1 );
+                        var dependId = normalize( hardDepends[ len ] );
+                        depends[ len ] = hardDepends[ len ] = dependId;
+                        if ( isInDependencyChain( id, dependId ) ) {
+                            hardDepends.splice( len, 1 );
                         }
                     }
 
@@ -510,7 +518,10 @@ var require;
 
                     // 将实际依赖压入加载序列中，后续统一进行require
                     requireModules.push.apply( requireModules, realDepends );
-                    mod_define( id, depends, realDepends, defineItem.factory );
+                    mod_define( 
+                        id, defineItem.factory, 
+                        depends, hardDepends, realDepends
+                    );
                 }
             );
 
@@ -527,7 +538,7 @@ var require;
      */
     function isInDependencyChain( source, target ) {
         var module = mod_getModule( target );
-        var depends = module && module.factoryArgs;
+        var depends = module && module.hardDeps;
         
         if ( depends ) {
             var len = depends.length;
@@ -631,7 +642,7 @@ var require;
 
                         if ( 
                             !mod_isInited( id ) 
-                            || !isAllInited( mod_getModule( id ).dependencies )
+                            || !isAllInited( mod_getModule( id ).deps )
                         ) {
                             allInited = 0;
                             return false;
