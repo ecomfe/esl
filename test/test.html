@@ -5,15 +5,15 @@
 <title>loader test</title>
 
 <script src="../src/esl.js"></script>
-<!--script src="../require.src.js"></script-->
-<!--script src="../needs.js"></script-->
-<!--script src="../lsjs.js"></script-->
+<!--script src="impl/requirejs/require.js"></script-->
+<!--script src="impl/needs/needs.js"></script-->
+<!--script src="impl/lsjs/lsjs.js"></script-->
 <script>
 require.config( {
     baseUrl: '.',
     paths: {
-        'css': '../src/js/css',
-        'js': '../src/js/js',
+        'css': '../src/css',
+        'js': '../src/js',
     },
     map: {
         'usecjs': {
@@ -21,9 +21,6 @@ require.config( {
         },
         'usecjs/change2amd': {
             simple: 'amd/simple'
-        },
-        'cssplugin': {
-            'cssplugin':'cssplugin2'
         }
     },
     packages: [
@@ -296,7 +293,7 @@ function localLoadCss( stateTd, callback ) {
         else {
             var moduleId = target.value + '/index';
 
-            require( [ moduleId ], function ( module ) {console.log( module )
+            require( [ moduleId ], function ( module ) {
                 checkNormalModule( moduleId, stateTd, module, callback );
             } );
         }
