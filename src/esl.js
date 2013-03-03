@@ -1,5 +1,5 @@
 /**
- * ESL (Enterprise/ECOMFE Standard Loader)
+ * ESL (Enterprise Standard Loader)
  * Copyright 2013 Baidu Inc. All rights reserved.
  * 
  * @file Browser端标准加载器，符合AMD规范
