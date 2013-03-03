@@ -390,7 +390,6 @@ var require;
                 var id = defineItem.id || currentId;
                 var depends = defineItem.deps;
                 var factory = defineItem.factory;
-                var normalize = createNormalizer( id );
                 
                 if ( mod_exists( id ) ) {
                     return;
@@ -408,11 +407,9 @@ var require;
                 realDepends.push.apply( realDepends, depends );
 
                 // 分析function body中的require
-                // TODO: remove comment
+                var requireRule = /require\(\s*(['"'])([^'"]+)\1\s*\)/g;
+                var commentRule = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg;
                 if ( typeof factory == 'function' ) {
-                    var requireRule = /require\(\s*(['"'])([^'"]+)\1\s*\)/g;
-                    var commentRule = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg;
-
                     factory.toString()
                         .replace( commentRule, '' )
                         .replace( requireRule, function ( $0, $1, $2 ) {
@@ -424,9 +421,9 @@ var require;
                 each(
                     realDepends,
                     function ( dependId ) {
-                        var idInfo = parseId( dependId );
-                        if ( idInfo.resource ) {
-                            pluginModules.push( normalize( idInfo.module ) );
+                        var idInf = parseId( dependId );
+                        if ( idInf.resource ) {
+                            pluginModules.push( normalize( idInf.module, id ) );
                         }
                     }
                 );
@@ -477,18 +474,17 @@ var require;
                 function ( defineItem, defineIndex ) {
                     var id = defineItem.id || currentId;
                     var depends = defineItem.deps;
-                    var hardDepends = depends.slice( 0 );
                     var realDepends = defineItem.realDeps;
-                    var normalize = createNormalizer( id );
+                    var hardDepends = [];
                     
                     // 对参数中声明的依赖进行normalize
                     // 并且处理参数中声明依赖的循环依赖
-                    var len = hardDepends.length;
+                    var len = depends.length;
                     while ( len-- ) {
-                        var dependId = normalize( hardDepends[ len ] );
-                        depends[ len ] = hardDepends[ len ] = dependId;
-                        if ( isInDependencyChain( id, dependId ) ) {
-                            hardDepends.splice( len, 1 );
+                        var dependId = normalize( depends[ len ], id );
+                        depends[ len ] = dependId;
+                        if ( !isInDependencyChain( id, dependId ) ) {
+                            hardDepends.unshift( dependId );
                         }
                     }
 
@@ -504,7 +500,7 @@ var require;
                     var realRequireDepends = [];
                     
                     while ( len-- ) {
-                        var dependId = normalize( realDepends[ len ] );
+                        var dependId = normalize( realDepends[ len ], id );
                         if ( !dependId
                              || dependId in existsDepend
                              || dependId in BUILDIN_MODULE
@@ -943,11 +939,9 @@ var require;
      * @return {Function}
      */
     function createLocalRequire( baseId ) {
-        var normalize = createNormalizer( baseId );
-        
         function req( requireId, callback ) {
             if ( typeof requireId == 'string' ) {
-                requireId = normalize( requireId );
+                requireId = normalize( requireId, baseId );
                 return nativeRequire( requireId, callback, baseId );
             }
             else if ( isArray( requireId ) ) {
@@ -957,7 +951,7 @@ var require;
                     requireId, 
                     function ( id ) { 
                         var idInfo = parseId( id );
-                        var pluginId = normalize( idInfo.module );
+                        var pluginId = normalize( idInfo.module, baseId );
                         if ( idInfo.resource && !mod_isInited( pluginId ) ) {
                             unloadedPluginModules.push( pluginId );
                         }
@@ -972,7 +966,7 @@ var require;
                         each( 
                             requireId, 
                             function ( id ) { 
-                                ids.push( normalize( id ) ) 
+                                ids.push( normalize( id, baseId ) ) 
                             } 
                         );
                         nativeRequire( ids, callback, baseId );
@@ -990,7 +984,7 @@ var require;
          * @return {string} 
          */
         req.toUrl = function ( id ) {
-            return toUrl( normalize( id ) );
+            return toUrl( normalize( id, baseId ) );
         };
 
         return req;
@@ -999,53 +993,52 @@ var require;
     
 
     /**
-     * 创建id normalize函数
+     * id normalize化
      * 
      * @inner
+     * @param {string} id 需要normalize的模块标识
      * @param {string} baseId 当前环境的模块标识
-     * @return {function(string)}
+     * @return {string}
      */
-    function createNormalizer( baseId ) {
-        function normalize( id ) {
-            if ( !id ) {
-                return '';
-            }
-
-            var idInfo = parseId( id );
-            var resourceId = idInfo.resource;
-            var moduleId = relative2absolute( idInfo.module, baseId );
-
-            each(
-                packagesIndex,
-                function ( package ) {
-                    var name = package.name;
-                    var main = name + '/' + package.main;
-                    if ( name == moduleId
-                    ) {
-                        moduleId = moduleId.replace( name, main );
-                        return false;
-                    }
-                }
-            );
-
-            moduleId = mappingId( moduleId, baseId );
-            
-            if ( resourceId ) {
-                var module = mod_getModuleExports( moduleId );
-                resourceId = module.normalize
-                    ? module.normalize( 
-                        resourceId, 
-                        normalize
-                      )
-                    : normalize( resourceId );
-                
-                return moduleId + '!' + resourceId;
-            }
-            
-            return moduleId;
+    function normalize( id, baseId ) {
+        if ( !id ) {
+            return '';
         }
 
-        return normalize;
+        var idInfo = parseId( id );
+        var resourceId = idInfo.resource;
+        var moduleId = relative2absolute( idInfo.module, baseId );
+
+        each(
+            packagesIndex,
+            function ( package ) {
+                var name = package.name;
+                var main = name + '/' + package.main;
+                if ( name == moduleId
+                ) {
+                    moduleId = moduleId.replace( name, main );
+                    return false;
+                }
+            }
+        );
+
+        moduleId = mappingId( moduleId, baseId );
+        
+        if ( resourceId ) {
+            var module = mod_getModuleExports( moduleId );
+            resourceId = module.normalize
+                ? module.normalize( 
+                    resourceId, 
+                    function ( resId ) {
+                        return normalize( resId, baseId )
+                    }
+                  )
+                : normalize( resourceId, baseId );
+            
+            return moduleId + '!' + resourceId;
+        }
+        
+        return moduleId;
     }
 
     /**
@@ -1263,13 +1256,11 @@ var require;
      * @param {function(Array,Number):boolean} iterator 遍历函数
      */
     function each( source, iterator ) {
-        if ( !isArray( source ) ) {
-            return;
-        }
-
-        for ( var i = 0, len = source.length; i < len; i++ ) {
-            if ( iterator( source[ i ], i ) === false ) {
-                break;
+        if ( isArray( source ) ) {
+            for ( var i = 0, len = source.length; i < len; i++ ) {
+                if ( iterator( source[ i ], i ) === false ) {
+                    break;
+                }
             }
         }
     }
