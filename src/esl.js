@@ -410,12 +410,14 @@ var require;
                 // 分析function body中的require
                 // TODO: remove comment
                 if ( typeof factory == 'function' ) {
-                    var match;
-                    var factoryBody = factory.toString();
                     var requireRule = /require\(\s*(['"'])([^'"]+)\1\s*\)/g;
-                    while ( ( match = requireRule.exec( factoryBody ) ) ) {
-                        realDepends.push( match[ 2 ] );
-                    }
+                    var commentRule = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg;
+
+                    factory.toString()
+                        .replace( commentRule, '' )
+                        .replace( requireRule, function ( $0, $1, $2 ) {
+                            realDepends.push( $2 );
+                        });
                 }
 
                 // 分析resource加载的plugin module id
