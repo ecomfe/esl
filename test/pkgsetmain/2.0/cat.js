@@ -1,3 +1,3 @@
 define( function ( require, exports ) {
-    exports.name = 'pkgclassic/cat'
+    exports.name = 'pkgsetmain/cat'
 } );

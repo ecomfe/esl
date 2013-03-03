@@ -2,9 +2,9 @@ define( function ( require ) {
     var cat = require( './cat' );
 
     return {
-        name: 'pkgclassic',
+        name: 'pkgsetmain',
         check: function () {
-            return cat.name == 'pkgclassic/cat';
+            return cat.name == 'pkgsetmain/cat';
         }
     };
 } );

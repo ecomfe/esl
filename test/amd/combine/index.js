@@ -43,7 +43,7 @@ define(
         'amd/combine/cat', 
         'amd/combine/dog',
         'amd/combine/tiger',
-        'amd/combine/lion',
+        'amd/combine/lion'
     ], 
     function ( cat, dog, tiger ) {
         var lion = require( 'amd/combine/lion' );
