@@ -307,9 +307,13 @@ function localLoadCss( stateTd, callback ) {
         if ( index < len ) {
             checking( buttons[ index++ ], checkNext );
         }
+        else {
+            alert( (new Date) - now)
+        }
     }
     
     if ( /[\?|]autostart/.test( location.search ) ) {
+        var now = new Date;
         checkNext();
     }
     
