@@ -1,13 +1,15 @@
-ESL (Enterprise/ECOMFE Standard Loader)
+ESL (Enterprise Standard Loader)
 =====================
 
 ESL是一个`浏览器端`、`符合AMD`的标准加载器，适合用于现代Web浏览器端应用的入口与模块管理。
 
 ### ESL vs RequireJS
 
-- 具有`更小的体积`与`更高的性能`
+- 具有`更小的体积`
+- 具有`更高的性能`
 - 不支持在`非浏览器端`使用
-- 不支持以下配置项：`packages`、`shim`、`config`
+- Loader-Plugins不支持`fromText`
+- 不支持以下配置项：`shim`、`config`
 
 ### 扩展阅读
 
