@@ -826,12 +826,12 @@ var require;
         packagesIndex = [];
         each( 
             requireConf.packages,
-            function ( package, index ) {
-                var pkg = package;
-                if ( typeof package == 'string' ) {
+            function ( packageConf, index ) {
+                var pkg = packageConf;
+                if ( typeof packageConf == 'string' ) {
                     pkg = {
-                        name: package.split('/')[ 0 ],
-                        location: package,
+                        name: packageConf.split('/')[ 0 ],
+                        location: packageConf,
                         main: 'main'
                     };
                 }
@@ -918,10 +918,10 @@ var require;
         if ( !isPathMap ) {
             each( 
                 packagesIndex,
-                function ( package ) {
-                    var name = package.name;
+                function ( packageConf ) {
+                    var name = packageConf.name;
                     if ( createPrefixRegexp( name ).test( id ) ) {
-                        url = url.replace( name, package.location );
+                        url = url.replace( name, packageConf.location );
                         return false;
                     }
                 }
@@ -1011,9 +1011,9 @@ var require;
 
         each(
             packagesIndex,
-            function ( package ) {
-                var name = package.name;
-                var main = name + '/' + package.main;
+            function ( packageConf ) {
+                var name = packageConf.name;
+                var main = name + '/' + packageConf.main;
                 if ( name == moduleId
                 ) {
                     moduleId = moduleId.replace( name, main );
