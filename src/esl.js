@@ -743,14 +743,16 @@ var require;
         var resourceId = idInfo.resource;
 
         function load( plugin ) {
-            plugin.load( 
-                resourceId, 
-                createLocalRequire( baseId ),
-                function ( value ) {
-                    mod_addResource( pluginAndResource, value );
-                },
-                {}
-            );
+            if ( !mod_isInited( pluginAndResource ) ) {
+                plugin.load( 
+                    resourceId, 
+                    createLocalRequire( baseId ),
+                    function ( value ) {
+                        mod_addResource( pluginAndResource, value );
+                    },
+                    {}
+                );
+            }
         }
 
         if ( !mod_isInited( pluginId ) ) {
@@ -903,9 +905,13 @@ var require;
      * @return {string}
      */
     function toUrl( id ) {
-        var url = id;
+        if ( !MODULE_ID_REG.test( id ) ) {
+            return id;
+        }
 
+        var url = id;
         var isPathMap = 0;
+
         each( pathsIndex, function ( item ) {
             var key = item.k;
             if ( createPrefixRegexp( key ).test( url ) ) {
@@ -1006,6 +1012,10 @@ var require;
         }
 
         var idInfo = parseId( id );
+        if ( !idInfo ) {
+            return id;
+        }
+
         var resourceId = idInfo.resource;
         var moduleId = relative2absolute( idInfo.module, baseId );
 
@@ -1100,6 +1110,15 @@ var require;
     }
 
     /**
+     * 模块id正则
+     * 
+     * @const
+     * @inner
+     * @type {RegExp}
+     */
+    var MODULE_ID_REG = /^([-_a-z0-9\.]+(\/[-_a-z0-9\.]+)*)(!.*)?$/i;
+
+    /**
      * 解析id，返回带有module和resource属性的Object
      * 
      * @inner
@@ -1107,7 +1126,7 @@ var require;
      * @return {Object}
      */
     function parseId( id ) {
-        if ( /^([-_a-z0-9\.]+(\/[-_a-z0-9\.]+)*)(!.*)?$/i.test( id ) ) {
+        if ( MODULE_ID_REG.test( id ) ) {
             var resourceId = RegExp.$3;
 
             return {
