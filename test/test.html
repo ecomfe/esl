@@ -13,7 +13,9 @@ require.config( {
     baseUrl: '.',
     paths: {
         'css': '../src/css',
-        'js': '../src/js'
+        'js': '../src/js',
+        'abspath': '/test/pathstest',
+        'relapath': 'pathstest/rela'
     },
     map: {
         'usecjs': {
@@ -145,6 +147,17 @@ require.config( {
     </tr>
     <tr>
         <td><input value="localLoadCss" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Conf paths:</th>
+    </tr>
+    <tr>
+        <td><input value="relapath" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="abspath" type="button"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
