@@ -699,7 +699,7 @@ var require;
         // 创建script标签
         var script = document.createElement( 'script' );
         script.setAttribute( 'data-require-id', moduleId );
-        script.src = id2Path( moduleId );
+        script.src = toUrl( moduleId ) + '.js';
         script.async = true;
         if ( script.readyState ) {
             script.onreadystatechange = loadedListener;
@@ -934,7 +934,11 @@ var require;
             );
         }
 
-        return './' + url;
+        if ( !/^([a-z]{2,10}:\/)?\//i.test( url ) ) {
+            url = requireConf.baseUrl + url;
+        }
+
+        return url;
     }
 
     /**
@@ -1096,17 +1100,6 @@ var require;
         }
 
         return id;
-    }
-
-    /**
-     * 将模块id转换成路径
-     * 
-     * @inner
-     * @param {string} id 模块id
-     * @return {string}
-     */
-    function id2Path( id ) {
-        return toUrl( id ).replace( './', requireConf.baseUrl ) + '.js';
     }
 
     /**
