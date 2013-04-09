@@ -1,0 +1,9 @@
+{
+    "name": "esl",
+    "description": "ESL是一个浏览器端、符合AMD的标准加载器，适合用于现代Web浏览器端应用的入口与模块管理。",
+    "version": "1.2.0",
+    "contributors": [
+        { "name": "errorrik", "email": "errorrik@gmail.com" }
+    ],
+    "repository": "git://github.com/ecomfe/esl"
+}
