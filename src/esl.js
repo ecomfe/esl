@@ -778,18 +778,40 @@ var require;
     };
 
     /**
+     * 混合当前配置项与用户传入的配置项
+     * 
+     * @inner
+     * @param {string} name 配置项名称
+     * @param {Any} value 用户传入配置项的值
+     */
+    function mixConfig( name, value ) {
+        var originValue = requireConf[ name ];
+        if ( typeof originValue == 'string' ) {
+            requireConf[ name ] = value;
+        }
+        else if ( isArray( originValue ) ) {
+            each( value, function ( item ) {
+                originValue.push( item );
+            } );
+        }
+        else {
+            for ( var key in value ) {
+                originValue[ key ] = value[ key ];
+            }
+        }
+    }
+
+    /**
      * 配置require
      * 
      * @param {Object} conf 配置对象
      */
     require.config = function ( conf ) {
-        // 原先采用force和deep的mixin方案
-        // 后来考虑到如果使用者将require.config写在多个地方
-        // 打包分析需要考虑合并以及合并顺序问题，比较混乱
-        // 又回归最简单的对象拷贝方案实现
-        for ( var key in conf ) {
+        // 简单的多处配置还是需要支持
+        // 所以实现更改为二级mix
+        for ( var key in requireConf ) {
             if ( conf.hasOwnProperty( key ) ) {
-                requireConf[ key ] = conf[ key ];
+                mixConfig( key, conf[ key ] );
             }
         }
         
