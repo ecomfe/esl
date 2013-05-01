@@ -15,6 +15,16 @@ var require;
     var require = createLocalRequire( '' );
 
     /**
+     * 预定义的模块列表
+     * 预定义指已经调用define，但内部还未进入依赖装载和初始化的模块
+     * 主要用于防止重复加载
+     * 
+     * @inner
+     * @type {Object}
+     */
+    var predefineModules = {};
+
+    /**
      * 定义模块
      * 
      * @param {string=} id 模块标识
@@ -68,6 +78,7 @@ var require;
             deps    : dependencies || [],
             factory : factory
         } );
+        id && (predefineModules[ id ] = 1);
     }
 
     define.amd = {};
@@ -388,6 +399,8 @@ var require;
             defines,
             function ( defineItem, defineIndex ) {
                 var id = defineItem.id || currentId;
+                predefineModules[ id ] = 1;
+
                 var depends = defineItem.deps;
                 var factory = defineItem.factory;
                 
@@ -689,6 +702,7 @@ var require;
     function loadModule( moduleId ) {
         if ( 
             mod_exists( moduleId )
+            || predefineModules[ moduleId ]
             || loadingModules[ moduleId ]
         ) {
             return;
