@@ -415,9 +415,8 @@ var require;
                 }
 
                 // 处理实际需要加载的依赖
-                var realDepends = [];
+                var realDepends = depends.slice( 0 );
                 defineItem.realDeps = realDepends;
-                realDepends.push.apply( realDepends, depends );
 
                 // 分析function body中的require
                 var requireRule = /require\(\s*(['"'])([^'"]+)\1\s*\)/g;
@@ -1008,10 +1007,20 @@ var require;
      * @return {Function}
      */
     function createLocalRequire( baseId ) {
+        var requiredCache = {};
         function req( requireId, callback ) {
             if ( typeof requireId == 'string' ) {
-                requireId = normalize( requireId, baseId );
-                return nativeRequire( requireId, callback, baseId );
+                var requiredModule;
+                if ( !( requiredModule = requiredCache[ requireId ] ) ) {
+                    requiredModule = nativeRequire( 
+                        normalize( requireId, baseId ), 
+                        callback, 
+                        baseId 
+                    );
+                    requiredCache[ requireId ] = requiredModule;
+                }
+                
+                return requiredModule;
             }
             else if ( isArray( requireId ) ) {
                 // 分析是否有resource使用的plugin没加载
@@ -1168,7 +1177,7 @@ var require;
      * @inner
      * @type {RegExp}
      */
-    var MODULE_ID_REG = /^([-_a-z0-9\.]+(\/[-_a-z0-9\.]+)*)(!.*)?$/i;
+    var MODULE_ID_REG = /^[-_a-z0-9\.]+(\/[-_a-z0-9\.]+)*$/i;
 
     /**
      * 解析id，返回带有module和resource属性的Object
@@ -1178,12 +1187,12 @@ var require;
      * @return {Object}
      */
     function parseId( id ) {
-        if ( MODULE_ID_REG.test( id ) ) {
-            var resourceId = RegExp.$3;
+        var segs = id.split( '!' );
 
+        if ( MODULE_ID_REG.test( segs[ 0 ] ) ) {
             return {
-                module   : RegExp.$1,
-                resource : resourceId ? resourceId.slice( 1 ) : ''
+                module   : segs[ 0 ],
+                resource : segs[ 1 ] || ''
             };
         }
 
