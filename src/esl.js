@@ -22,28 +22,23 @@ var require;
      * @param {Function=} factory 创建模块的工厂方法
      */
     function define() {
+        var argsLen = arguments.length;
+        if ( !argsLen ) {
+            return;
+        }
+
         var id;
         var dependencies;
-        var factory;
+        var factory = arguments[ --argsLen ];
 
-        for ( var i = 0, len = arguments.length; i < len; i++ ) {
-            var arg = arguments[ i ];
+        while ( argsLen-- ) {
+            var arg = arguments[ argsLen ];
 
-            switch ( typeof arg ) {
-                case 'string':
-                    id = arg;
-                    break;
-                case 'function':
-                    factory = arg;
-                    break;
-                case 'object':
-                    if ( !dependencies && isArray( arg ) ) {
-                        dependencies = arg;
-                    }
-                    else {
-                        factory = arg;
-                    }
-                    break;
+            if ( typeof arg === 'string' ) {
+                id = arg;
+            }
+            else if ( isArray( arg ) ) {
+                dependencies = arg;
             }
         }
         
@@ -263,7 +258,7 @@ var require;
 
         nativeRequire( requireModules );
     }
-    
+
     /**
      * 等待模块依赖加载完成
      * 加载完成后尝试调用factory完成模块定义
