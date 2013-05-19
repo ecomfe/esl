@@ -754,14 +754,39 @@ var require;
         var pluginId = idInfo.module;
         var resourceId = idInfo.resource;
 
+        /**
+         * plugin加载完成的回调函数
+         * 
+         * @inner
+         * @param {*} value resource的值
+         */
+        function pluginOnload( value ) {
+            modAddResource( pluginAndResource, value );
+        }
+
+        /**
+         * 该方法允许plugin使用加载的资源声明模块
+         * 
+         * @param {string} name 模块id
+         * @param {string} body 模块声明字符串
+         */
+        pluginOnload.fromText = function ( id, text ) {
+            new Function( text )();
+            completeDefine( id );
+        };
+
+        /**
+         * 加载资源
+         * 
+         * @inner
+         * @param {Object} plugin 用于加载资源的插件模块
+         */
         function load( plugin ) {
             if ( !modIsInited( pluginAndResource ) ) {
                 plugin.load( 
                     resourceId, 
                     createLocalRequire( baseId ),
-                    function ( value ) {
-                        modAddResource( pluginAndResource, value );
-                    },
+                    pluginOnload,
                     {}
                 );
             }
