@@ -296,6 +296,10 @@ function localLoadCss( stateTd, callback ) {
     }
 
     function checking( target, callback ) {
+        if ( target.disabled == true ) {
+            callback();
+        }
+
         var stateTd = getStateTd( target );
         stateTd.className = 'checking';
         var value = target.value;
