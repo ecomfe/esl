@@ -179,11 +179,11 @@ require.config( {
         <th colspan="2" align="left">Conf packages:</th>
     </tr>
     <tr>
-        <td><input value="stringPackage" type="button"></td>
+        <td><input value="stringPackage" type="button" disabled="disabled"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
-        <td><input value="objectPackage" type="button"></td>
+        <td><input value="objectPackage" type="button" disabled="disabled"></td>
         <td class="uncheck"></td>
     </tr>
 </table>
@@ -296,10 +296,6 @@ function localLoadCss( stateTd, callback ) {
     }
 
     function checking( target, callback ) {
-        if ( target.disabled == true ) {
-            callback();
-        }
-
         var stateTd = getStateTd( target );
         stateTd.className = 'checking';
         var value = target.value;
@@ -322,7 +318,13 @@ function localLoadCss( stateTd, callback ) {
     var len = buttons.length;
     function checkNext() {
         if ( index < len ) {
-            checking( buttons[ index++ ], checkNext );
+            var button = buttons[ index++ ];
+            if ( button.disabled ) {
+                checkNext();
+            }
+            else {
+                checking( button, checkNext );
+            }
         }
         else {
             alert( (new Date) - now)
