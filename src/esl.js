@@ -57,13 +57,16 @@ var require;
             id = getCurrentScript().getAttribute( 'data-require-id' );
         }
 
+        // 处理依赖声明
+        // 默认为['require', 'exports', 'module']
+        dependencies = dependencies || ['require', 'exports', 'module'];
         if ( id ) {
             modPreDefine( id, dependencies, factory );
         }
         else {
             // 纪录到共享变量中，在load或readystatechange中处理
             wait4PreDefines.push( {
-                deps    : dependencies || [],
+                deps    : dependencies,
                 factory : factory
             } );
         }
@@ -109,7 +112,7 @@ var require;
      * 
      * @inner
      * @param {string} id 模块标识
-     * @param {Array.<string>=} dependencies 显式声明的依赖模块列表
+     * @param {Array.<string>} dependencies 显式声明的依赖模块列表
      * @param {*} factory 模块定义函数或模块对象
      */
     function modPreDefine( id, dependencies, factory ) {
@@ -118,11 +121,13 @@ var require;
         }
 
         var module = {
-            id      : id,
-            deps    : dependencies || [],
-            factory : factory,
-            exports : {},
-            state   : MODULE_STATE_PRE_DEFINED
+            id       : id,
+            deps     : dependencies,
+            factory  : factory,
+            exports  : {},
+            hardDeps : [],
+            softDeps : [],
+            state    : MODULE_STATE_PRE_DEFINED
         };
 
         // 将模块预存入defining集合中
@@ -148,15 +153,8 @@ var require;
         each(
             modules,
             function ( module ) {
-                // 处理define中编写的依赖声明
-                // 默认为['require', 'exports', 'module']
-                var depends = module.deps;
-                if ( depends.length === 0 ) {
-                    depends.push( 'require', 'exports', 'module' );
-                }
-
                 // 处理实际需要加载的依赖
-                var realDepends = depends.slice( 0 );
+                var realDepends = module.deps.slice( 0 );
                 module.realDeps = realDepends;
 
                 // 分析function body中的require
@@ -209,21 +207,27 @@ var require;
             modules,
             function ( module ) {
                 var id = module.id;
-                var depends = module.deps;
                 var realDepends = module.realDeps;
-                var hardDepends = [];
-                module.hardDeps = hardDepends;
-                
+                var hardDepends = module.hardDeps;
+                var softDepends = module.softDeps;
+
                 // 对参数中声明的依赖进行normalize
                 // 并且处理参数中声明依赖的循环依赖
-                var len = depends.length;
-                while ( len-- ) {
-                    var dependId = normalize( depends[ len ], id );
-                    depends[ len ] = dependId;
-                    if ( !isInDependencyChain( id, dependId ) ) {
-                        hardDepends.unshift( dependId );
+                var hardDependsMap = {};
+                var depends = module.deps;
+                each(
+                    depends,
+                    function ( dependId, index ) {
+                        dependId = normalize( dependId, id );
+                        depends[ index ] = dependId;
+                        if ( !hardDependsMap[ dependId ]
+                             && !isInDependencyChain( id, dependId, 'hardDeps' )
+                        ) {
+                            hardDepends.push( dependId );
+                            hardDependsMap[ dependId ] = 1;
+                        }
                     }
-                }
+                );
 
                 // 依赖模块id normalize化，并去除必要的依赖。去除的依赖模块有：
                 // 1. 内部模块：require/exports/module
@@ -245,6 +249,9 @@ var require;
                     else {
                         existsDepend[ dependId ] = 1;
                         realDepends[ len ] = dependId;
+                        if ( !hardDependsMap[ dependId ] ) {
+                            softDepends.unshift( dependId );
+                        }
 
                         // 将实际依赖压入加载序列中，后续统一进行require
                         requireModules.push( dependId );
@@ -287,12 +294,23 @@ var require;
          */
         function isInvokeReady() {
             var isReady = 1;
-
+debugger
             each( 
                 module.hardDeps, 
-                function ( id ) {
-                    isReady = id in BUILDIN_MODULE || modIsDefined( id );
-                    return isReady;
+                function ( depId ) {
+                    isReady = depId in BUILDIN_MODULE 
+                        || modIsDefined( depId );
+                    return !!isReady;
+                }
+            );
+
+            isReady && each( 
+                module.softDeps, 
+                function ( depId ) {
+                    isReady = depId in BUILDIN_MODULE 
+                        || modIsDefined( depId )
+                        || isInDependencyChain( id, depId )
+                    return !!isReady;
                 }
             );
 
@@ -554,22 +572,29 @@ var require;
 
     /**
      * 判断source是否处于target的依赖链中
-     * 判断依据为直接声明的依赖，非内部require
      *
      * @inner
      * @return {boolean}
      */
-    function isInDependencyChain( source, target ) {
+    function isInDependencyChain( source, target, depLevel, meet ) {
+        depLevel = depLevel || 'realDeps';
         var module = modGetModule( target );
-        var depends = module && module.hardDeps;
+        var depends = module && module[ depLevel ];
+
+        meet = meet || {};
+        if ( meet[ target ] ) {
+            return 0;
+        }
+        meet[ target ] = 1;
         
         if ( depends ) {
             var len = depends.length;
 
             while ( len-- ) {
-                var dependName = depends[ len ];
-                if ( source == dependName
-                     || isInDependencyChain( source, dependName ) 
+                var dependId = depends[ len ];
+
+                if ( source == dependId
+                     || isInDependencyChain( source, dependId, depLevel, meet ) 
                 ) {
                     return 1;
                 }
