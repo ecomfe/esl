@@ -54,7 +54,8 @@ var require;
             && document.attachEvent 
             && (!(opera && opera.toString() === '[object Opera]')) 
         ) {
-            id = getCurrentScript().getAttribute( 'data-require-id' );
+            var currentScript = getCurrentScript();
+            id = currentScript && currentScript.getAttribute('data-require-id');
         }
 
         // 处理依赖声明
@@ -294,7 +295,7 @@ var require;
          */
         function isInvokeReady() {
             var isReady = 1;
-debugger
+
             each( 
                 module.hardDeps, 
                 function ( depId ) {
@@ -309,7 +310,7 @@ debugger
                 function ( depId ) {
                     isReady = depId in BUILDIN_MODULE 
                         || modIsDefined( depId )
-                        || isInDependencyChain( id, depId )
+                        || isInDependencyChain( id, depId );
                     return !!isReady;
                 }
             );
@@ -1182,7 +1183,7 @@ debugger
                 var term = namePath[ i ];
                 switch ( term ) {
                     case '..':
-                        if ( cutBaseTerms < baseLen - 1 ) {
+                        if ( cutBaseTerms < baseLen ) {
                             cutBaseTerms++;
                             cutNameTerms++;
                         }
