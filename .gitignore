@@ -1,0 +1,5 @@
+*.gz
+*.min
+Thumbs.db
+.DS_Store
+*.swp
