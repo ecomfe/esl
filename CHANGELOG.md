@@ -6,6 +6,8 @@
 + require.config实现更改为二级结构mixin，允许多处配置与合并
 + 优化define的参数解析过程
 + 优化模块定义过程的状态管理
++ 增加factory invoke前对软依赖模块的检测
++ 修复relative2absolute不能向上查找到根的问题
 
 1.2.0
 -------
