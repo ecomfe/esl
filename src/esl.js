@@ -1147,7 +1147,7 @@ var require;
         
         if ( resourceId ) {
             var module = modGetModuleExports( moduleId );
-            resourceId = module.normalize
+            resourceId = module && module.normalize
                 ? module.normalize( 
                     resourceId, 
                     function ( resId ) {
