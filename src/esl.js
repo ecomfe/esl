@@ -4,6 +4,7 @@
  * 
  * @file Browser端标准加载器，符合AMD规范
  * @author errorrik(errorrik@gmail.com)
+ *         Firede(firede@firede.us)
  */
 
 var define;
