@@ -32,7 +32,15 @@ require.config( {
             location: 'pkgsetmain/2.0',
             main: 'index'
         }
-    ]
+    ],
+    config: {
+        'moduleconf/index': {
+            'desc': 'index'
+        },
+        'moduleconf/cat': {
+            'desc': 'cat'
+        }
+    }
 } );
 </script>
 
@@ -184,6 +192,13 @@ require.config( {
     </tr>
     <tr>
         <td><input value="nomapGlobal" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Conf config:</th>
+    </tr>
+    <tr>
+        <td><input value="moduleconf" type="button"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
