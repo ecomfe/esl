@@ -110,6 +110,21 @@ var require;
     }
 
     /**
+     * 模块配置获取函数
+     * 
+     * @inner
+     * @return {Object} 模块配置对象
+     */
+    function moduleConfigGetter() {
+        var conf = requireConf.config[ this.id ];
+        if ( conf && typeof conf === 'object' ) {
+            return conf;
+        }
+
+        return {};
+    }
+
+    /**
      * 预定义模块
      * 
      * @inner
@@ -127,6 +142,7 @@ var require;
             deps     : dependencies,
             factory  : factory,
             exports  : {},
+            config   : moduleConfigGetter,
             hardDeps : [],
             softDeps : [],
             state    : MODULE_STATE_PRE_DEFINED
@@ -180,10 +196,10 @@ var require;
                     function ( dependId ) {
                         var idInfo = parseId( dependId );
                         if ( idInfo.resource ) {
-                            var pluginId = normalize( idInfo.module, module.id );
-                            if ( !pluginModuleIdsMap[ pluginId ] ) {
-                                pluginModuleIds.push( pluginId );
-                                pluginModuleIdsMap[ pluginId ] = 1;
+                            var plugId = normalize( idInfo.module, module.id );
+                            if ( !pluginModuleIdsMap[ plugId ] ) {
+                                pluginModuleIds.push( plugId );
+                                pluginModuleIdsMap[ plugId ] = 1;
                             }
                         }
                     }
@@ -268,7 +284,7 @@ var require;
                 }
 
                 module.state = MODULE_STATE_ANALYZED;
-                modWaitDependenciesLoaded( module );console.log(module.state)
+                modWaitDependenciesLoaded( module );
             }
         );
 
@@ -835,7 +851,7 @@ var require;
                     resourceId, 
                     createLocalRequire( baseId ),
                     pluginOnload,
-                    {}
+                    moduleConfigGetter.call( { id: pluginAndResource } )
                 );
             }
         }
