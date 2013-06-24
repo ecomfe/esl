@@ -150,6 +150,7 @@ var require;
      */
     function modPreAnalyse() {
         var pluginModuleIds = [];
+        var pluginModuleIdsMap = {};
         var modules = modGetByState( MODULE_STATE_PRE_DEFINED );
 
         each(
@@ -179,9 +180,11 @@ var require;
                     function ( dependId ) {
                         var idInfo = parseId( dependId );
                         if ( idInfo.resource ) {
-                            pluginModuleIds.push( 
-                                normalize( idInfo.module, module.id )
-                            );
+                            var pluginId = normalize( idInfo.module, module.id );
+                            if ( !pluginModuleIdsMap[ pluginId ] ) {
+                                pluginModuleIds.push( pluginId );
+                                pluginModuleIdsMap[ pluginId ] = 1;
+                            }
                         }
                     }
                 );
@@ -208,6 +211,10 @@ var require;
         each(
             modules,
             function ( module ) {
+                if ( module.state !== MODULE_STATE_PRE_ANALYZED ) {
+                    return;
+                }
+
                 var id = module.id;
                 var realDepends = module.realDeps;
                 var hardDepends = module.hardDeps;
@@ -261,7 +268,7 @@ var require;
                 }
 
                 module.state = MODULE_STATE_ANALYZED;
-                modWaitDependenciesLoaded( module );
+                modWaitDependenciesLoaded( module );console.log(module.state)
             }
         );
 
@@ -738,13 +745,15 @@ var require;
      * @param {string} moduleId 模块标识
      */
     function loadModule( moduleId ) {
-        if ( 
-            modExists( moduleId )
-            || loadingModules[ moduleId ]
-        ) {
+        if ( loadingModules[ moduleId ] ) {
             return;
         }
-
+        
+        if ( modExists( moduleId ) ) {
+            modAnalyse( [ modGetModule( moduleId ) ] );
+            return;
+        }
+        
         loadingModules[ moduleId ] = 1;
 
         // 创建script标签
