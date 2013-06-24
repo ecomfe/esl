@@ -16,8 +16,8 @@ var config = require.config,
         plugins: true,
         pathsConfig: true,
         packagesConfig: true,
-        mapConfig: true
-        //moduleConfig: true,
+        mapConfig: true,
+        moduleConfig: true
         //shimConfig: true
         //Does NOT support pluginDynamic in 1.0
         //pluginDynamic: true
