@@ -139,6 +139,17 @@ require.config( {
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <th colspan="2" align="left">Plugin:</th>
+    </tr>
+    <tr>
+        <td><input value="loadResource" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/combineplugin" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <th colspan="2" align="left">CSS Plugin:</th>
     </tr>
     <tr>
@@ -205,6 +216,21 @@ function checkNormalModule( name, stateTd, module, callback ) {
     if ( typeof callback == 'function' ) {
         setTimeout( callback, 1 );
     }
+}
+
+function loadResource( stateTd, callback ) {
+    require( [ 'plugin/html!plugin/resource' ], function ( text ) {
+        if ( text == 'plugin/html!plugin/resource' ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    } );
 }
 
 function nomapGlobal( stateTd, callback ) {
