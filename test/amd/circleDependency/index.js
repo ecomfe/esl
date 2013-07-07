@@ -1,10 +1,11 @@
 define( 
     'amd/circleDependency/index', 
     [ 
+        'require',
         'amd/circleDependency/cat', 
         'amd/circleDependency/dog'
     ], 
-    function ( cat ) {
+    function ( require, cat ) {
         return {
             name: 'amd/circleDependency/index',
             check: function () {

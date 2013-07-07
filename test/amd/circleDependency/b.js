@@ -1,7 +1,7 @@
 define( 
     'amd/circleDependency/b',
-    [ 'amd/circleDependency/a', 'amd/circleDependency/c' ],
-    function ( a, c ) {
+    [ 'require', 'amd/circleDependency/c', 'amd/circleDependency/a' ],
+    function ( require, c ) {
         return {
             name: 'amd/circleDependency/b',
             check: function () {
