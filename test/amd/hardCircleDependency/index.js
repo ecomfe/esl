@@ -1,6 +1,6 @@
 define( 
     [ 
-        './a',
+        './a'
     ], 
     function ( a ) {
         return {
