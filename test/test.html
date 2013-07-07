@@ -10,6 +10,7 @@
 <!--script src="impl/lsjs/lsjs.js"></script-->
 <script>
 require.config( {
+    waitSeconds: 5,
     baseUrl: '.',
     paths: {
         'css': '../src/css',
@@ -108,6 +109,14 @@ require.config( {
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <td><input value="amd/circleDependency2" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/hardCircleDependency" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <td><input value="amd/combine" type="button"></td>
         <td class="uncheck"></td>
     </tr>
@@ -150,11 +159,11 @@ require.config( {
         <th colspan="2" align="left">Plugin:</th>
     </tr>
     <tr>
-        <td><input value="loadResource" type="button"></td>
+        <td><input value="loadResource" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
-        <td><input value="amd/combineplugin" type="button"></td>
+        <td><input value="amd/combineplugin" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
@@ -205,11 +214,11 @@ require.config( {
         <th colspan="2" align="left">Conf packages:</th>
     </tr>
     <tr>
-        <td><input value="stringPackage" type="button"></td>
+        <td><input value="stringPackage" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
-        <td><input value="objectPackage" type="button"></td>
+        <td><input value="objectPackage" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
 </table>
@@ -357,10 +366,14 @@ function localLoadCss( stateTd, callback ) {
     var buttons = document.getElementsByTagName( 'input' )
     var index = 0;
     var len = buttons.length;
-    function checkNext() {
+    function checkNext( ignoreTag ) {
         if ( index < len ) {
             var button = buttons[ index++ ];
-            if ( button.disabled ) {
+            if ( button.disabled 
+                || ( autostartIgnore 
+                     && button.getAttribute( 'data-ignore' ) == autostartIgnore
+                    )
+            ) {
                 checkNext();
             }
             else {
@@ -368,12 +381,14 @@ function localLoadCss( stateTd, callback ) {
             }
         }
         else {
-            alert( (new Date) - now)
+            alert( (new Date) - now )
         }
     }
     
-    if ( /[\?|]autostart/.test( location.search ) ) {
+    var autostartIgnore;
+    if ( /[\?|]autostart(-([a-z]+))?/.test( location.search ) ) {
         var now = new Date;
+        autostartIgnore = RegExp.$2;
         checkNext();
     }
     
