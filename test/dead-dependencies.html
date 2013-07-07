@@ -1,0 +1,11 @@
+<script src="../src/esl.js"></script>
+<script>
+require.config( {
+    waitSeconds: 5,
+    baseUrl: '.'
+} );
+</script>
+<script>
+require( ['deaddependencies/a'] )
+</script>
+<button>this button pressable means that the page is still alive</button>
