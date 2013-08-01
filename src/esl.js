@@ -52,6 +52,8 @@ var require;
      * @return {*}
      */
     function require( requireId, callback ) {
+        assertNotContainRelativeId( requireId );
+        
         // 超时提醒
         var timeout = requireConf.waitSeconds;
         if ( isArray( requireId ) && timeout ) {
@@ -1309,8 +1311,6 @@ var require;
         return req;
     }
 
-    
-
     /**
      * id normalize化
      * 
@@ -1409,6 +1409,48 @@ var require;
         }
 
         return id;
+    }
+
+    /**
+     * 确定require的模块id不包含相对id。用于global require，提前预防难以跟踪的错误出现
+     * 
+     * @inner
+     * @param {string|Array} requireId require的模块id
+     */
+    function assertNotContainRelativeId( requireId ) {
+        var invalidIds = [];
+
+        /**
+         * 监测模块id是否relative id
+         * 
+         * @inner
+         * @param {string} id 模块id
+         */
+        function monitor( id ) {
+            if ( /^\.{1,2}/.test( id ) ) {
+                invalidIds.push( id );
+            }
+        }
+
+        if ( typeof requireId == 'string' ) {
+            monitor( requireId );
+        }
+        else {
+            each( 
+                requireId, 
+                function ( id ) {
+                    monitor( id );
+                }
+            );
+        }
+
+        // 包含相对id时，直接抛出错误
+        if ( invalidIds.length > 0 ) {
+            throw new Error(
+                '[REQUIRE_FATAL]Relative ID is not allowed in global require: ' 
+                + invalidIds.join( ', ' )
+            );
+        }
     }
 
     /**
