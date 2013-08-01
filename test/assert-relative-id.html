@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="../src/esl.js"></script>
+<script>
+require.config( {
+    baseUrl: '.'
+} );
+</script>
+<script>
+require([ 'assertrelativeid/local/index' ], function ( index ) {
+    alert( index.a.name );
+});
+require([ 'assertrelativeid/global/index' ], function ( index ) {
+    alert( index.a.name );
+});
+require( ['./assertrelativeid/local/index'] );
+</script>
+</head>
+<body>
+<p>local/index should be loaded, local/a should be alert.</p>
+<p>global/index should not be loaded, an error should be throwed because use global require in factory.</p>
+<p>./assertrelativeid/local/index should not be required, an error should be throwed.</p>
+</body>
+
