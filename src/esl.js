@@ -65,6 +65,14 @@ var require;
     }
 
     /**
+     * 将模块标识转换成相对的url
+     * 
+     * @param {string} id 模块标识
+     * @return {string}
+     */
+    require.toUrl = toUrl;
+
+    /**
      * 超时提醒函数
      * 
      * @inner
@@ -1189,7 +1197,7 @@ var require;
     }
 
     /**
-     * 将模块标识转换成相对baseUrl的url
+     * 将模块标识转换成相对的url
      * 
      * @inner
      * @param {string} id 模块标识
