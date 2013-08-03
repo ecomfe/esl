@@ -9,7 +9,7 @@ define( {
                 load( xhr.responseText );
             }
         };
-        xhr.open('GET', req.toUrl( resourceId ) + '.html', true);
+        xhr.open('GET', req.toUrl( resourceId + '.html' ), true);
         xhr.send(null);
     }
 } );
