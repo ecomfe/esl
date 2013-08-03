@@ -11,6 +11,7 @@
 <script>
 require.config( {
     waitSeconds: 5,
+    urlArgs: 'urlArgs',
     baseUrl: '.',
     paths: {
         'css': '../src/css',
@@ -41,6 +42,13 @@ require.config( {
         'moduleconf/cat': {
             'desc': 'cat'
         }
+    }
+} );
+require.config( {
+    urlArgs: {
+        css: 'css',
+        amd: 'amd',
+        'amd/simpleDependency': 'amdsd'
     }
 } );
 </script>
@@ -221,6 +229,13 @@ require.config( {
         <td><input value="objectPackage" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <th colspan="2" align="left">Conf urlArgs:</th>
+    </tr>
+    <tr>
+        <td><input value="urlArgs" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 </table>
 
 <script>
@@ -305,6 +320,48 @@ function localLoadCss( stateTd, callback ) {
 
         callback();
     } );
+}
+
+function urlArgs( stateTd, callback ) {
+    stateTd.className = 'pass';
+
+    var scripts = document.getElementsByTagName( 'script' );
+    var len = scripts.length;
+    while ( len-- ) {
+        var script = scripts[ len ];
+        var moduleId = script.getAttribute( 'data-require-id' );
+        var src = script.getAttribute( 'src' );
+
+        if ( !moduleId ) {
+            continue;
+        }
+
+        if ( moduleId == 'css' ) {
+            if ( !/(&|\?)css$/.test( src ) ) {
+                stateTd.className = 'fail';
+                break;
+            }
+        }
+        else if ( /^amd\/simpleDependency(\/|$)/.test(moduleId) ) {
+            if ( !/(&|\?)amdsd$/.test( src ) ) {
+                stateTd.className = 'fail';
+                break;
+            }
+        }
+        else if ( /^amd(\/|$)/.test(moduleId) ) {
+            if ( !/(&|\?)amd$/.test( src ) ) {
+                stateTd.className = 'fail';
+                break;
+            }
+        }
+        else {
+            if ( !/(&|\?)urlArgs$/.test( src ) ) {
+                stateTd.className = 'fail';
+                break;
+            }
+        }
+    }
+    callback();
 }
 
 (function () {
