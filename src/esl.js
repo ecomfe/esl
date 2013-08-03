@@ -114,6 +114,14 @@ var require;
     }
 
     /**
+     * 尝试完成模块定义的定时器
+     * 
+     * @inner
+     * @type {number}
+     */
+    var tryDefineTimeout;
+
+    /**
      * 定义模块
      * 
      * @param {string=} id 模块标识
@@ -162,6 +170,13 @@ var require;
         dependencies = dependencies || ['require', 'exports', 'module'];
         if ( id ) {
             modPreDefine( id, dependencies, factory );
+
+            // 在不远的未来尝试完成define
+            // define可能是在页面中某个地方调用，不一定是在独立的文件被require装载
+            if ( tryDefineTimeout ) {
+                clearTimeout( tryDefineTimeout );
+            }
+            tryDefineTimeout = setTimeout( modPreAnalyse, 10 );
         }
         else {
             // 纪录到共享变量中，在load或readystatechange中处理
