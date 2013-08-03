@@ -1,3 +1,12 @@
+1.6.0
+-------
+
++ 增加urlArgs参数支持
++ 增加global require调用时对relative id的检测和报错
++ 增加define调用后尝试完成模块定义的机制
++ 修复1.4.2中引入的bug: global require对象不包含toUrl方法
+
+
 1.4.2
 -------
 
