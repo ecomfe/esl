@@ -133,7 +133,7 @@ var require;
         while ( argsLen-- ) {
             var arg = arguments[ argsLen ];
 
-            if ( typeof arg === 'string' ) {
+            if ( isString( arg ) ) {
                 id = arg;
             }
             else if ( isArray( arg ) ) {
@@ -824,7 +824,7 @@ var require;
         // 根据 https://github.com/amdjs/amdjs-api/wiki/require
         // It MUST throw an error if the module has not 
         // already been loaded and evaluated.
-        if ( typeof ids == 'string' ) {
+        if ( isString( ids ) ) {
             if ( !modIsDefined( ids ) ) {
                 throw new Error( '[MODULE_MISS]"' + ids + '" is not exists!' );
             }
@@ -952,7 +952,7 @@ var require;
         // 再throw一个Error多此一举了
         var script = document.createElement( 'script' );
         script.setAttribute( 'data-require-id', moduleId );
-        script.src = toUrl( moduleId ) + '.js';
+        script.src = toUrl( moduleId ) ;
         script.async = true;
         if ( script.readyState ) {
             script.onreadystatechange = loadedListener;
@@ -1052,7 +1052,8 @@ var require;
         config      : {},
         map         : {},
         packages    : [],
-        waitSeconds : 0
+        waitSeconds : 0,
+        urlArgs     : {}
     };
 
     /**
@@ -1090,7 +1091,13 @@ var require;
         // 所以实现更改为二级mix
         for ( var key in requireConf ) {
             if ( conf.hasOwnProperty( key ) ) {
-                mixConfig( key, conf[ key ] );
+                var confItem = conf[ key ];
+                if ( key == 'urlArgs' && isString( confItem ) ) {
+                    defaultUrlArgs = confItem;
+                }
+                else {
+                    mixConfig( key, confItem );
+                }
             }
         }
         
@@ -1110,6 +1117,7 @@ var require;
         createPathsIndex();
         createMappingIdIndex();
         createPackagesIndex();
+        createUrlArgsIndex();
     }
 
     /**
@@ -1131,7 +1139,7 @@ var require;
             requireConf.packages,
             function ( packageConf ) {
                 var pkg = packageConf;
-                if ( typeof packageConf == 'string' ) {
+                if ( isString( packageConf ) ) {
                     pkg = {
                         name: packageConf.split('/')[ 0 ],
                         location: packageConf,
@@ -1167,6 +1175,32 @@ var require;
     }
 
     /**
+     * 默认的urlArgs
+     * 
+     * @inner
+     * @type {string}
+     */
+    var defaultUrlArgs;
+
+    /**
+     * urlArgs内部索引
+     * 
+     * @inner
+     * @type {Array}
+     */
+    var urlArgsIndex;
+
+    /**
+     * 创建urlArgs内部索引
+     * 
+     * @inner
+     */
+    function createUrlArgsIndex() {
+        urlArgsIndex = kv2List( requireConf.urlArgs );
+        urlArgsIndex.sort( createDescSorter() );
+    }
+
+    /**
      * mapping内部索引
      * 
      * @inner
@@ -1199,29 +1233,42 @@ var require;
     }
 
     /**
-     * 将模块标识转换成相对的url
+     * 将`模块标识+'.extension'`形式的字符串转换成相对的url
      * 
      * @inner
-     * @param {string} id 模块标识
+     * @param {string} source 源字符串
      * @return {string}
      */
-    function toUrl( id ) {
-        if ( !MODULE_ID_REG.test( id ) ) {
-            return id;
+    function toUrl( source ) {
+        // 分离 模块标识 和 .extension
+        var extReg = /(\.[a-z0-9]+)$/i;
+        var extname = '.js';
+        var id = source;
+
+        if ( extReg.test( source ) ) {
+            extname = RegExp.$1;
+            id = source.replace( extReg, '' );
         }
 
+        // 模块标识合法性检测
+        if ( !MODULE_ID_REG.test( id ) ) {
+            return source;
+        }
+        
         var url = id;
-        var isPathMap = 0;
 
+        // paths处理和匹配
+        var isPathMap;
         each( pathsIndex, function ( item ) {
             var key = item.k;
-            if ( createPrefixRegexp( key ).test( url ) ) {
+            if ( createPrefixRegexp( key ).test( id ) ) {
                 url = url.replace( key, item.v );
                 isPathMap = 1;
                 return false;
             }
         } );
 
+        // packages处理和匹配
         if ( !isPathMap ) {
             each( 
                 packagesIndex,
@@ -1235,9 +1282,38 @@ var require;
             );
         }
 
+        // 相对路径时，附加baseUrl
         if ( !/^([a-z]{2,10}:\/)?\//i.test( url ) ) {
             url = requireConf.baseUrl + url;
         }
+
+        // 附加 .extension
+        extname && ( url += extname );
+
+
+        var isUrlArgsAppended;
+
+        /**
+         * 为url附加urlArgs
+         * 
+         * @inner
+         * @param {string} args urlArgs串
+         */
+        function appendUrlArgs( args ) {
+            if ( !isUrlArgsAppended ) {
+                url += ( url.indexOf( '?' ) > 0 ? '&' : '?' ) + args;
+                isUrlArgsAppended = 1;
+            }
+        }
+        
+        // urlArgs处理和匹配
+        each( urlArgsIndex, function ( item ) {
+            if ( createPrefixRegexp( item.k ).test( id ) ) {
+                appendUrlArgs( item.v );
+                return false;
+            }
+        } );
+        defaultUrlArgs && appendUrlArgs( defaultUrlArgs );
 
         return url;
     }
@@ -1252,7 +1328,7 @@ var require;
     function createLocalRequire( baseId ) {
         var requiredCache = {};
         function req( requireId, callback ) {
-            if ( typeof requireId == 'string' ) {
+            if ( isString( requireId ) ) {
                 var requiredModule;
                 if ( !( requiredModule = requiredCache[ requireId ] ) ) {
                     requiredModule = nativeRequire( 
@@ -1432,7 +1508,7 @@ var require;
             }
         }
 
-        if ( typeof requireId == 'string' ) {
+        if ( isString( requireId ) ) {
             monitor( requireId );
         }
         else {
@@ -1620,6 +1696,17 @@ var require;
      */
     function isFunction( obj ) {
         return typeof obj == 'function';
+    }
+
+    /**
+     * 判断是否字符串
+     * 
+     * @inner
+     * @param {*} obj 要判断的对象
+     * @return {boolean}
+     */
+    function isString( obj ) {
+        return typeof obj == 'string';
     }
 
     /**
