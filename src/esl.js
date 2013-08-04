@@ -1257,8 +1257,15 @@ var require;
     function toUrl( source ) {
         // 分离 模块标识 和 .extension
         var extReg = /(\.[a-z0-9]+)$/i;
+        var queryReg = /(\?[^#]*)$/i;
         var extname = '.js';
         var id = source;
+        var query = '';
+
+        if ( queryReg.test( source ) ) {
+            query = RegExp.$1;
+            source = source.replace( queryReg, '' );
+        }
 
         if ( extReg.test( source ) ) {
             extname = RegExp.$1;
@@ -1302,8 +1309,8 @@ var require;
             url = requireConf.baseUrl + url;
         }
 
-        // 附加 .extension
-        extname && ( url += extname );
+        // 附加 .extension 和 query
+        url += extname + query;
 
 
         var isUrlArgsAppended;
