@@ -3,12 +3,19 @@ ESL (Enterprise Standard Loader)
 
 ESL是一个`浏览器端`、`符合AMD`的标准加载器，适合用于现代Web浏览器端应用的入口与模块管理。
 
+
 ### ESL vs RequireJS
 
 - 具有`更小的体积`
 - 具有`更高的性能`
 - 不支持在`非浏览器端`使用
 - 尚未支持以下配置项：`shim`
+
+
+### ESL的配置项
+
+查看[ESL的配置文档](doc/config.md)
+
 
 ### 扩展阅读
 
