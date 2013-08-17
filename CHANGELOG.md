@@ -1,3 +1,10 @@
+1.6.2
+-------
+
++ 修复module id中包含.时路径查找错误问题
++ 梳理toUrl，修复global require的toUrl参数匹配package main时结果错误问题
+
+
 1.6.0
 -------
 
