@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>loader test</title>
+
+<script src="../src/esl.js"></script>
+<!--script src="impl/requirejs/require.js"></script-->
+<script>
+require.config( {
+    waitSeconds: 5,
+    urlArgs: 'urlArgs',
+    baseUrl: '.',
+    paths: {
+        'css': '../src/css',
+        'js': '../src/js',
+        'abspath': '/test/pathstest',
+        'relapath': 'pathstest/rela',
+        'tangram': 'http://dd.com/tangram.js'
+    },
+    map: {
+        'usecjs': {
+            simple: 'cjs/simple'
+        },
+        'usecjs/change2amd': {
+            simple: 'amd/simple'
+        },
+        'tourl/index': {
+            simple: 'cjs/simple'
+        }
+    },
+    packages: [
+        'pkgclassic/1.0',
+        {
+            name: 'pkgsetmain',
+            location: 'pkgsetmain/2.0',
+            main: 'index'
+        }
+    ],
+    config: {
+        'moduleconf/index': {
+            'desc': 'index'
+        },
+        'moduleconf/cat': {
+            'desc': 'cat'
+        }
+    }
+} );
+require.config( {
+    urlArgs: "123"
+} );
+
+
+function assert_toUrl( name, value ) {
+    //log(value)
+    var inputs = document.getElementsByTagName( 'input' );
+    var len = inputs.length;
+    while ( len-- ) {
+        var input = inputs[ len ];
+        if ( input.name == name ) {
+            var validity = input.value == value;
+            input.checked = validity;
+            input.parentNode.className = validity ? 'pass' : 'fail';
+            if (!validity) {
+                alert('expect: ' + input.value + ', activity: ' + value );
+            }
+            break;
+        }
+    }
+}
+
+</script>
+<style>
+label{display:block;border-left:10px solid #fff;padding-left:5px;}
+.pass{border-left:10px solid green;}
+.fail{border-left:10px solid red;}
+</style>
+</head>
+<body>
+    <label><input type="checkbox" name="global:normal" value="./normal?123" disabled/>global:normal</label>
+    <label><input type="checkbox" name="global:normal.js" value="./normal.js?123" disabled/>global:normal.js</label>
+    <label><input type="checkbox" name="global:paths-relative" value="./pathstest/rela?123" disabled/>global:paths-relative</label>
+    <label><input type="checkbox" name="global:paths-relative.js" value="./pathstest/rela.js?123" disabled/>global:paths-relative.js</label>
+    <label><input type="checkbox" name="global:paths-absolute" value="/test/pathstest?123" disabled/>global:paths-absolute</label>
+    <label><input type="checkbox" name="global:paths-http" value="http://dd.com/tangram.js?123" disabled/>global:paths-http</label>
+    <label><input type="checkbox" name="global:pkg-main" value="./pkgsetmain/2.0/index?123" disabled/>global:pkg-main</label>
+    <label><input type="checkbox" name="global:pkg-module" value="./pkgsetmain/2.0/mod?123" disabled/>global:pkg-module</label>
+
+    <label><input type="checkbox" name="local:normal" value="./normal?123" disabled/>local:normal</label>
+    <label><input type="checkbox" name="local:normal.js" value="./normal.js?123" disabled/>local:normal.js</label>
+    <label><input type="checkbox" name="local:paths-relative" value="./pathstest/rela?123" disabled/>local:paths-relative</label>
+    <label><input type="checkbox" name="local:paths-relative.js" value="./pathstest/rela.js?123" disabled/>local:paths-relative.js</label>
+    <label><input type="checkbox" name="local:paths-absolute" value="/test/pathstest?123" disabled/>local:paths-absolute</label>
+    <label><input type="checkbox" name="local:paths-http" value="http://dd.com/tangram.js?123" disabled/>local:paths-http</label>
+    <label><input type="checkbox" name="local:pkg-main" value="./pkgsetmain/2.0/index?123" disabled/>local:pkg-main</label>
+    <label><input type="checkbox" name="local:pkg-module" value="./pkgsetmain/2.0/mod?123" disabled/>local:pkg-module</label>
+    <label><input type="checkbox" name="local:relative-id" value="./tourl/relative?123" disabled/>local:relative-id</label>
+    <label><input type="checkbox" name="local:map" value="./cjs/simple?123" disabled/>local:map</label>
+
+    <label><input type="checkbox" name="plugin:normal" value="./normal?123" disabled/>plugin:normal</label>
+    <label><input type="checkbox" name="plugin:tangram" value="http://dd.com/tangram.js?123" disabled/>plugin:paths-http</label>
+    <label><input type="checkbox" name="plugin:tourl/relative" value="./tourl/relative?123" disabled/>plugin:relative-id</label>
+    <label><input type="checkbox" name="plugin:cjs/simple" value="./cjs/simple?123" disabled/>plugin:map</label>
+</body>
+<script>
+assert_toUrl( 'global:normal', require.toUrl( 'normal' ) );
+assert_toUrl( 'global:normal.js', require.toUrl( 'normal.js' ) );
+assert_toUrl( 'global:paths-relative', require.toUrl( 'relapath' ) );
+assert_toUrl( 'global:paths-relative.js', require.toUrl( 'relapath.js' ) );
+assert_toUrl( 'global:paths-absolute', require.toUrl( 'abspath' ) );
+assert_toUrl( 'global:paths-http', require.toUrl( 'tangram' ) );
+assert_toUrl( 'global:pkg-main', require.toUrl( 'pkgsetmain' ) );
+assert_toUrl( 'global:pkg-module', require.toUrl( 'pkgsetmain/mod' ) );
+
+
+require( ['tourl/index'] );
+</script>
+</html>
