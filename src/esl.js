@@ -72,7 +72,7 @@ var require;
      * @param {string} id 模块标识
      * @return {string}
      */
-    require.toUrl = toUrl;
+    require.toUrl = actualGlobalRequire.toUrl;
 
     /**
      * 超时提醒函数
@@ -967,7 +967,7 @@ var require;
         // 再throw一个Error多此一举了
         var script = document.createElement( 'script' );
         script.setAttribute( 'data-require-id', moduleId );
-        script.src = toUrl( moduleId ) ;
+        script.src = toUrl( moduleId + '.js' ) ;
         script.async = true;
         if ( script.readyState ) {
             script.onreadystatechange = loadedListener;
@@ -1258,7 +1258,7 @@ var require;
         // 分离 模块标识 和 .extension
         var extReg = /(\.[a-z0-9]+)$/i;
         var queryReg = /(\?[^#]*)$/i;
-        var extname = '.js';
+        var extname = '';
         var id = source;
         var query = '';
 
@@ -1434,10 +1434,8 @@ var require;
             packagesIndex,
             function ( packageConf ) {
                 var name = packageConf.name;
-                var main = name + '/' + packageConf.main;
-                if ( name == moduleId
-                ) {
-                    moduleId = moduleId.replace( name, main );
+                if ( name == moduleId ) {
+                    moduleId = name + '/' + packageConf.main;
                     return false;
                 }
             }
