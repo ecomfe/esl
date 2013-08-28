@@ -355,25 +355,27 @@ var require;
                 // 2. 重复模块：dependencies参数和内部require可能重复
                 // 3. 空模块：dependencies中使用者可能写空
                 var realDepends = module.realDeps;
-                var len = realDepends.length;
                 var existsDepend = {};
                 
-                while ( len-- ) {
+                // 为保证模块和插件资源的请求顺序，此处正序遍历
+                for ( var i = 0, len = realDepends.length; i < len; ) {
                     // 此处和上部分循环存在重复normalize，因为deps和realDeps是重复的
                     // 为保持逻辑分界清晰，就不做优化了先
-                    var dependId = normalize( realDepends[ len ], id );
+                    var dependId = normalize( realDepends[ i ], id );
                     if ( !dependId
                          || dependId in existsDepend
                          || dependId in BUILDIN_MODULE
                     ) {
-                        realDepends.splice( len, 1 );
+                        realDepends.splice( i, 1 );
+                        len--;
                     }
                     else {
                         existsDepend[ dependId ] = 1;
-                        realDepends[ len ] = dependId;
+                        realDepends[ i ] = dependId;
 
                         // 将实际依赖压入加载序列中，后续统一进行require
                         requireModules.push( dependId );
+                        i++;
                     }
                 }
 
