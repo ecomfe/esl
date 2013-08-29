@@ -36,6 +36,7 @@ var require;
      */
     var actualGlobalRequire = createLocalRequire( '' );
 
+    // #begin-ignore
     /**
      * 超时提醒定时器
      * 
@@ -43,7 +44,8 @@ var require;
      * @type {number}
      */
     var waitTimeout;
-
+    // #end-ignore
+    
     /**
      * 加载模块
      * 
@@ -52,6 +54,7 @@ var require;
      * @return {*}
      */
     function require( requireId, callback ) {
+        // #begin-ignore
         assertNotContainRelativeId( requireId );
         
         // 超时提醒
@@ -62,6 +65,7 @@ var require;
             }
             waitTimeout = setTimeout( waitTimeoutNotice, timeout * 1000 );
         }
+        // #end-ignore
 
         return actualGlobalRequire( requireId, callback );
     }
@@ -74,6 +78,7 @@ var require;
      */
     require.toUrl = actualGlobalRequire.toUrl;
 
+    // #begin-ignore
     /**
      * 超时提醒函数
      * 
@@ -112,7 +117,8 @@ var require;
             );
         }
     }
-
+    // #end-ignore
+    
     /**
      * 尝试完成模块定义的定时器
      * 
@@ -1069,7 +1075,9 @@ var require;
         config      : {},
         map         : {},
         packages    : [],
+        // #begin-ignore
         waitSeconds : 0,
+        // #end-ignore
         urlArgs     : {}
     };
 
@@ -1509,6 +1517,7 @@ var require;
         return id;
     }
 
+    // #begin-ignore
     /**
      * 确定require的模块id不包含相对id。用于global require，提前预防难以跟踪的错误出现
      * 
@@ -1550,6 +1559,7 @@ var require;
             );
         }
     }
+    // #end-ignore
 
     /**
      * 模块id正则
