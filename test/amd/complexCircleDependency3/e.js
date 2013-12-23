@@ -1,11 +1,11 @@
 define( 
     function ( require ) {
-        var h1 = require( './h1' );
+        var index = require( './index' );
         return {
-            name: 'amd/complexCircleDependency/h3',
+            name: 'amd/complexCircleDependency3/e',
             check: function () {
                 var valid = 
-                    h1.name == 'amd/complexCircleDependency/h1';
+                    index.name == 'amd/complexCircleDependency3/index';
                 return valid;
             }
         };
