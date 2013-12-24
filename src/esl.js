@@ -22,6 +22,15 @@ var require;
      */
     var modModules = {};
 
+    /**
+     * 模块容器副本，不包含resource
+     * 在modAnalyse时，从list里遍历比forin更高效
+     * 
+     * @inner
+     * @type {Array}
+     */
+    var modModuleList = [];
+
     // 模块状态枚举量
     var MODULE_PRE_DEFINED = 1;
     var MODULE_ANALYZED = 2;
@@ -34,7 +43,7 @@ var require;
      * @inner
      * @type {Function}
      */
-    var actualGlobalRequire = createLocalRequire( '' );
+    var actualGlobalRequire = createLocalRequire();
 
     // #begin-ignore
     /**
@@ -172,9 +181,6 @@ var require;
             id = currentScript && currentScript.getAttribute('data-require-id');
         }
 
-        // 处理依赖声明
-        // 默认为['require', 'exports', 'module']
-        dependencies = dependencies || ['require', 'exports', 'module'];
         if ( id ) {
             modPreDefine( id, dependencies, factory );
 
@@ -196,25 +202,6 @@ var require;
     }
 
     define.amd = {};
-
-    /**
-     * 获取相应状态的模块列表
-     * 
-     * @inner
-     * @param {number} state 状态码
-     * @return {Array}
-     */
-    function modGetByState( state ) {
-        var modules = [];
-        for ( var key in modModules ) {
-            var module = modModules[ key ];
-            if ( module.state === state ) {
-                modules.push( module );
-            }
-        }
-
-        return modules;
-    }
 
     /**
      * 模块配置获取函数
@@ -247,7 +234,7 @@ var require;
         // 模块内部信息包括
         // -----------------------------------
         // id: module id
-        // deps: 模块定义时声明的依赖
+        // deps: 模块定义时声明的依赖，默认为['require', 'exports', 'module']
         // factory: 初始化函数或对象
         // factoryDeps: 初始化函数的参数依赖
         // exports: 模块的实际暴露对象（AMD定义）
@@ -261,7 +248,7 @@ var require;
         // ------------------------------------
         var module = {
             id              : id,
-            deps            : dependencies,
+            deps            : dependencies || ['require', 'exports', 'module'],
             factoryDeps     : [],
             factory         : factory,
             exports         : {},
@@ -276,7 +263,11 @@ var require;
 
         // 将模块存入容器
         modModules[ id ] = module;
+        modModuleList.push( module );
     }
+
+    var REQUIRE_RULE = /require\(\s*(['"'])([^'"]+)\1\s*\)/g;
+    var COMMENT_RULE = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg;
 
     /**
      * 预分析模块
@@ -293,7 +284,6 @@ var require;
     function modAnalyse() {
         var requireModules = [];
         var requireModulesIndex = {};
-        var modules = modGetByState( MODULE_PRE_DEFINED );
 
         /**
          * 添加需要请求的模块
@@ -310,89 +300,90 @@ var require;
             requireModulesIndex[ id ] = 1;
         }
 
-        each(
-            modules,
-            function ( module ) {
-                // 处理define中显式声明的dependencies
-                var deps = module.deps.slice( 0 );
-                var declareDepsCount = deps.length;
-                var hardDependsCount = 0;
+        
 
-                // 分析function body中的require
-                // 如果包含显式依赖声明，为性能考虑，可以不分析factoryBody
-                // AMD的说明是`SHOULD NOT`，不过这里还是分析了
-                var factory = module.factory;
-                var requireRule = /require\(\s*(['"'])([^'"]+)\1\s*\)/g;
-                var commentRule = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg;
-                if ( typeof factory === 'function' ) {
-                    hardDependsCount = Math.min( factory.length, declareDepsCount );
-                    factory.toString()
-                        .replace( commentRule, '' )
-                        .replace( requireRule, function ( $0, $1, depId ) {
-                            deps.push( depId );
-                        });
-                }
+        each( modModuleList, function ( module ) {
+            if ( module.state > MODULE_PRE_DEFINED ) {
+                return;
+            }
 
-                each(
-                    deps,
-                    function ( depId, index ) {
-                        var idInfo = parseId( depId );
-                        var absId = normalize( idInfo.module, module.id );
-                        var moduleInfo, resInfo;
+            // 处理define中显式声明的dependencies
+            var deps = module.deps.slice( 0 );
+            var declareDepsCount = deps.length;
+            var hardDependsCount = 0;
 
-                        if ( absId && !BUILDIN_MODULE[ absId ]) {
-                            // 如果依赖是一个资源，将其信息添加到module.depResources
-                            // 
-                            // module.depResources中的项有可能是重复的。
-                            // 在这个阶段，加载resource的module可能还未defined，导致此时resource id无法被normalize。
-                            // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
-                            // - js!../name.js
-                            // - js!a/name.js
-                            // - ../../js!../name.js
-                            // 
-                            // 所以加载资源的module ready时，需要遍历module.depResources进行处理
-                            if ( idInfo.resource ) {
-                                resInfo = {
-                                    id       : depId,
-                                    module   : absId,
-                                    resource : idInfo.resource
-                                };
-                                module.pluginModules[ absId ] = 1;
-                                module.depResources.push( resInfo );
-                            }
+            // 分析function body中的require
+            // 如果包含显式依赖声明，为性能考虑，可以不分析factoryBody
+            // AMD的说明是`SHOULD NOT`，不过这里还是分析了
+            var factory = module.factory;
+            if ( typeof factory === 'function' ) {
+                hardDependsCount = Math.min( factory.length, declareDepsCount );
+                factory.toString()
+                    .replace( COMMENT_RULE, '' )
+                    .replace( REQUIRE_RULE, function ( $0, $1, depId ) {
+                        deps.push( depId );
+                    });
+            }
 
-                            // 对依赖模块的id normalize能保证正确性，在此处进行去重
-                            moduleInfo = module.depModulesIndex[ absId ];
-                            if ( !moduleInfo ) {
-                                moduleInfo = {
-                                    id       : idInfo.module,
-                                    absId    : absId,
-                                    hard     : index < hardDependsCount,
-                                    circular : CIRCULAR_DEP_UNREADY
-                                };
-                                module.depModules.push( moduleInfo );
-                                module.depModulesIndex[ absId ] = moduleInfo;
-                                addRequireModule( absId );
-                                modMonitorDependencyDefined( module.id, absId );
-                            }
-                        }
-                        else {
-                            moduleInfo = { absId: absId };
+            each(
+                deps,
+                function ( depId, index ) {
+                    var idInfo = parseId( depId );
+                    var absId = normalize( idInfo.module, module.id );
+                    var moduleInfo, resInfo;
+
+                    if ( absId && !BUILDIN_MODULE[ absId ] ) {
+                        // 如果依赖是一个资源，将其信息添加到module.depResources
+                        // 
+                        // module.depResources中的项有可能是重复的。
+                        // 在这个阶段，加载resource的module可能还未defined，导致此时resource id无法被normalize。
+                        // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
+                        // - js!../name.js
+                        // - js!a/name.js
+                        // - ../../js!../name.js
+                        // 
+                        // 所以加载资源的module ready时，需要遍历module.depResources进行处理
+                        if ( idInfo.resource ) {
+                            resInfo = {
+                                id       : depId,
+                                module   : absId,
+                                resource : idInfo.resource
+                            };
+                            module.pluginModules[ absId ] = 1;
+                            module.depResources.push( resInfo );
                         }
 
-                        // 如果当前正在分析的依赖项是define中声明的，
-                        // 则记录到module.factoryDeps中
-                        // 在factory invoke前将用于生成invoke arguments
-                        if ( index < declareDepsCount ) {
-                            module.factoryDeps.push( resInfo || moduleInfo );
+                        // 对依赖模块的id normalize能保证正确性，在此处进行去重
+                        moduleInfo = module.depModulesIndex[ absId ];
+                        if ( !moduleInfo ) {
+                            moduleInfo = {
+                                id       : idInfo.module,
+                                absId    : absId,
+                                hard     : index < hardDependsCount,
+                                circular : CIRCULAR_DEP_UNREADY
+                            };
+                            module.depModules.push( moduleInfo );
+                            module.depModulesIndex[ absId ] = moduleInfo;
+                            addRequireModule( absId );
+                            modMonitorDependencyDefined( module.id, absId );
                         }
                     }
-                );
+                    else {
+                        moduleInfo = { absId: absId };
+                    }
 
-                module.state = MODULE_ANALYZED;
-                modTryDefine( module );
-            }
-        );
+                    // 如果当前正在分析的依赖项是define中声明的，
+                    // 则记录到module.factoryDeps中
+                    // 在factory invoke前将用于生成invoke arguments
+                    if ( index < declareDepsCount ) {
+                        module.factoryDeps.push( resInfo || moduleInfo );
+                    }
+                }
+            );
+
+            module.state = MODULE_ANALYZED;
+            modTryDefine( module );
+        });
 
         nativeRequire( requireModules );
     }
@@ -405,11 +396,15 @@ var require;
      * @param {string} depId 依赖模块id
      */
     function modMonitorDependencyDefined( moduleId, depId ) {
-        var module = modModules[ moduleId ];
+        function tryDefine() {
+            modTryInvokeFactory( moduleId );
+        }
 
         modAddDefinedListener( 
             depId, 
             function () {
+                var module = modModules[ moduleId ];
+
                 // 对依赖的resource先进行normalize，然后尝试加载
                 if ( module.pluginModules[ depId ] ) {
                     each( 
@@ -420,20 +415,14 @@ var require;
                             }
 
                             res.absId = normalize( res.id, moduleId );
-                            modAddDefinedListener( 
-                                res.absId, 
-                                function () {
-                                    res.defined = true;
-                                    modTryInvokeFactory( moduleId );
-                                }
-                            );
+                            modAddDefinedListener( res.absId, tryDefine );
 
-                            nativeRequire( [ res.absId ] );
+                            nativeRequire( [ res.absId ], null, moduleId );
                         }
                     );
                 }
 
-                modTryInvokeFactory( moduleId );
+                tryDefine();
             }
         );
     }
@@ -480,7 +469,7 @@ var require;
             each(
                 module.depResources,
                 function ( dep ) {
-                    if ( !dep.defined ) {
+                    if ( !( dep.absId && modIsDefined( dep.absId ) ) ) {
                         readyState = DEP_UNREADY;
                         return false;
                     }
@@ -688,10 +677,11 @@ var require;
         var args = [];
         each( 
             modules,
-            function ( moduleId, index ) {
-                args[ index ] = 
+            function ( moduleId ) {
+                args.push(
                     buildinModules[ moduleId ]
-                    || modGetModuleExports( moduleId );
+                    || modGetModuleExports( moduleId )
+                );
             } 
         );
 
@@ -865,8 +855,11 @@ var require;
         each(
             preDefines,
             function ( module ) {
-                var id = module.id || currentId;
-                modPreDefine( id, module.deps, module.factory );
+                modPreDefine( 
+                    module.id || currentId, 
+                    module.deps, 
+                    module.factory
+                );
             }
         );
 
@@ -881,9 +874,6 @@ var require;
      * @return {Object}
      */
     function nativeRequire( ids, callback, baseId ) {
-        callback = callback || new Function();
-        baseId = baseId || '';
-
         // 根据 https://github.com/amdjs/amdjs-api/wiki/require
         // It MUST throw an error if the module has not 
         // already been loaded and evaluated.
@@ -895,30 +885,26 @@ var require;
             return modGetModuleExports( ids );
         }
 
-        if ( !isArray( ids ) ) {
-            return;
+        var isCallbackCalled = 0;
+        if ( isArray( ids ) ) {
+            tryFinishRequire();
+            
+            !isCallbackCalled && each(
+                ids,
+                function ( id ) {
+                    if ( !BUILDIN_MODULE[ id ] ) {
+                        // 以低优先级触发模式挂载监听器
+                        // 循环依赖中能先完成依赖其模块的定义
+                        modAddDefinedListener( id, tryFinishRequire, 1 );
+                        ( id.indexOf( '!' ) > 0 
+                            ? loadResource
+                            : loadModule
+                        )( id, baseId );
+                    }
+                }
+            );
         }
 
-        var isCallbackCalled = 0;
-        tryFinishRequire();
-        
-        !isCallbackCalled && each(
-            ids,
-            function ( id ) {
-                if ( id in BUILDIN_MODULE ) {
-                    return;
-                } 
-
-                // 以低优先级触发模式挂载监听器
-                // 循环依赖中能先完成依赖其模块的定义
-                modAddDefinedListener( id, tryFinishRequire, 1 );
-                ( id.indexOf( '!' ) > 0 
-                    ? loadResource
-                    : loadModule
-                )( id, baseId );
-            }
-        );
-        
         /**
          * 尝试完成require，调用callback
          * 在模块与其依赖模块都加载完时调用
@@ -926,26 +912,23 @@ var require;
          * @inner
          */
         function tryFinishRequire() {
-            if ( isCallbackCalled ) {
-                return;
-            }
+            if ( !isCallbackCalled ) {
+                var isAllCompleted = 1;
+                each( ids, function ( id ) {
+                    if ( !BUILDIN_MODULE[ id ] ) {
+                        return ( isAllCompleted = modIsCompleted( id ) );
+                    }
+                });
 
-            var isAllCompleted = 1;
-            each( ids, function ( id ) {
-                if ( !modIsCompleted( id ) ) {
-                    isAllCompleted = false;
-                    return isAllCompleted;
+                // 检测并调用callback
+                if ( isAllCompleted ) {
+                    isCallbackCalled = 1;
+
+                    (typeof callback === 'function') && callback.apply( 
+                        global, 
+                        modGetModulesExports( ids, BUILDIN_MODULE )
+                    );
                 }
-            });
-
-            // 检测并调用callback
-            if ( isAllCompleted ) {
-                isCallbackCalled = 1;
-
-                callback.apply( 
-                    global, 
-                    modGetModulesExports( ids, BUILDIN_MODULE )
-                );
             }
         }
     }
@@ -1003,7 +986,6 @@ var require;
                 script = null;
 
                 completePreDefine( moduleId );
-                delete loadingModules[ moduleId ];
             }
         }
     }
@@ -1091,47 +1073,38 @@ var require;
     };
 
     /**
-     * 混合当前配置项与用户传入的配置项
-     * 
-     * @inner
-     * @param {string} name 配置项名称
-     * @param {Any} value 用户传入配置项的值
-     */
-    function mixConfig( name, value ) {
-        var originValue = requireConf[ name ];
-        var type = typeof originValue;
-        if ( type === 'string' || type === 'number' ) {
-            requireConf[ name ] = value;
-        }
-        else if ( isArray( originValue ) ) {
-            each( value, function ( item ) {
-                originValue.push( item );
-            } );
-        }
-        else {
-            for ( var key in value ) {
-                originValue[ key ] = value[ key ];
-            }
-        }
-    }
-
-    /**
      * 配置require
      * 
      * @param {Object} conf 配置对象
      */
     require.config = function ( conf ) {
-        // 简单的多处配置还是需要支持
-        // 所以实现更改为二级mix
         for ( var key in requireConf ) {
             if ( conf.hasOwnProperty( key ) ) {
-                var confItem = conf[ key ];
-                if ( key === 'urlArgs' && typeof confItem === 'string' ) {
-                    defaultUrlArgs = confItem;
+
+                var newValue = conf[ key ];
+                var oldValue = requireConf[ key ];
+
+                if ( key === 'urlArgs' && typeof newValue === 'string' ) {
+                    defaultUrlArgs = newValue;
                 }
                 else {
-                    mixConfig( key, confItem );
+                    // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
+                    var type = typeof oldValue;
+                    if ( type === 'string' || type === 'number' ) {
+                        requireConf[ key ] = newValue;
+                    }
+                    else if ( isArray( oldValue ) ) {
+                        each( newValue, function ( item ) {
+                            oldValue.push( item );
+                        } );
+                    }
+                    else {
+                        for ( var key in newValue ) {
+                            oldValue[ key ] = newValue[ key ];
+                        }
+                    }
                 }
+
             }
         }
         
@@ -1142,18 +1115,12 @@ var require;
     createConfIndex();
 
     /**
-     * 创建配置信息内部索引
+     * paths内部索引
      * 
      * @inner
+     * @type {Array}
      */
-    function createConfIndex() {
-        requireConf.baseUrl = requireConf.baseUrl.replace( /\/$/, '' ) + '/';
-        createPathsIndex();
-        createMappingIdIndex();
-        createPackagesIndex();
-        createUrlArgsIndex();
-        normalizeCache = {};
-    }
+    var pathsIndex;
 
     /**
      * packages内部索引
@@ -1164,50 +1131,12 @@ var require;
     var packagesIndex;
 
     /**
-     * 创建packages内部索引
-     * 
-     * @inner
-     */
-    function createPackagesIndex() {
-        packagesIndex = [];
-        each( 
-            requireConf.packages,
-            function ( packageConf ) {
-                var pkg = packageConf;
-                if ( typeof packageConf === 'string' ) {
-                    pkg = {
-                        name: packageConf.split('/')[ 0 ],
-                        location: packageConf,
-                        main: 'main'
-                    };
-                }
-                
-                pkg.location = pkg.location || pkg.name;
-                pkg.main = (pkg.main || 'main').replace(/\.js$/i, '');
-                packagesIndex.push( pkg );
-            }
-        );
-
-        packagesIndex.sort( createDescSorter( 'name' ) );
-    }
-
-    /**
-     * paths内部索引
+     * mapping内部索引
      * 
      * @inner
      * @type {Array}
      */
-    var pathsIndex;
-
-    /**
-     * 创建paths内部索引
-     * 
-     * @inner
-     */
-    function createPathsIndex() {
-        pathsIndex = kv2List( requireConf.paths );
-        pathsIndex.sort( createDescSorter() );
-    }
+    var mappingIdIndex;
 
     /**
      * 默认的urlArgs
@@ -1226,45 +1155,57 @@ var require;
     var urlArgsIndex;
 
     /**
-     * 创建urlArgs内部索引
+     * 创建配置信息内部索引
      * 
      * @inner
      */
-    function createUrlArgsIndex() {
-        urlArgsIndex = kv2List( requireConf.urlArgs );
-        urlArgsIndex.sort( createDescSorter() );
-    }
+    function createConfIndex() {
+        requireConf.baseUrl = requireConf.baseUrl.replace( /\/$/, '' ) + '/';
+        var descSorter = createDescSorter();
 
-    /**
-     * mapping内部索引
-     * 
-     * @inner
-     * @type {Array}
-     */
-    var mappingIdIndex;
-    
-    /**
-     * 创建mapping内部索引
-     * 
-     * @inner
-     */
-    function createMappingIdIndex() {
-        mappingIdIndex = [];
-        
+        // createPathsIndex
+        pathsIndex = kv2List( requireConf.paths );
+        pathsIndex.sort( descSorter );
+
+        // createMappingIdIndex
         mappingIdIndex = kv2List( requireConf.map );
-        mappingIdIndex.sort( createDescSorter() );
-
+        mappingIdIndex.sort( descSorter );
         each(
             mappingIdIndex,
             function ( item ) {
                 var key = item.k;
                 item.v = kv2List( item.v );
-                item.v.sort( createDescSorter() );
+                item.v.sort( descSorter );
                 item.reg = key === '*'
                     ? /^/
                     : createPrefixRegexp( key );
             }
         );
+
+        // createPackagesIndex
+        packagesIndex = [];
+        each( 
+            requireConf.packages,
+            function ( packageConf ) {
+                var pkg = packageConf;
+                if ( typeof packageConf === 'string' ) {
+                    pkg = {
+                        name: packageConf.split('/')[ 0 ],
+                        location: packageConf,
+                        main: 'main'
+                    };
+                }
+                
+                pkg.location = pkg.location || pkg.name;
+                pkg.main = (pkg.main || 'main').replace(/\.js$/i, '');
+                packagesIndex.push( pkg );
+            }
+        );
+        packagesIndex.sort( createDescSorter( 'name' ) );
+
+        // createUrlArgsIndex
+        urlArgsIndex = kv2List( requireConf.urlArgs );
+        urlArgsIndex.sort( descSorter );
     }
 
     /**
@@ -1277,7 +1218,7 @@ var require;
     function toUrl( source ) {
         // 分离 模块标识 和 .extension
         var extReg = /(\.[a-z0-9]+)$/i;
-        var queryReg = /(\?[^#]*)$/i;
+        var queryReg = /(\?[^#]*)$/;
         var extname = '';
         var id = source;
         var query = '';
@@ -1290,11 +1231,6 @@ var require;
         if ( extReg.test( source ) ) {
             extname = RegExp.$1;
             id = source.replace( extReg, '' );
-        }
-
-        // 模块标识合法性检测
-        if ( !MODULE_ID_REG.test( id ) ) {
-            return source;
         }
         
         var url = id;
@@ -1381,14 +1317,14 @@ var require;
                 return requiredModule;
             }
             else if ( isArray( requireId ) ) {
-                // 分析是否有resource使用的plugin没加载
-                var unloadedPluginModules = [];
+                // 分析是否有resource，取出pluginModule先
+                var pluginModules = [];
                 each( 
                     requireId, 
                     function ( id ) { 
                         var idInfo = parseId( id );
                         if ( idInfo.resource ) {
-                            unloadedPluginModules.push( 
+                            pluginModules.push( 
                                 normalize( idInfo.module, baseId )
                             );
                         }
@@ -1397,7 +1333,7 @@ var require;
 
                 // 加载模块
                 nativeRequire( 
-                    unloadedPluginModules, 
+                    pluginModules, 
                     function () {
                         var ids = [];
                         each( 
@@ -1427,8 +1363,6 @@ var require;
         return req;
     }
 
-    var normalizeCache = {};
-
     /**
      * id normalize化
      * 
@@ -1442,15 +1376,7 @@ var require;
             return '';
         }
 
-        // 尝试从cache中读取结果
-        var cache = normalizeCache[ baseId ];
-        if ( !cache ) {
-            cache = normalizeCache[ baseId ] = {};
-        }
-        else if ( cache[ id ] ) {
-            return cache[ id ];
-        }
-
+        baseId = baseId || '';
         var idInfo = parseId( id );
         if ( !idInfo ) {
             return id;
@@ -1470,7 +1396,26 @@ var require;
             }
         );
 
-        moduleId = mappingId( moduleId, baseId );
+        // 根据config中的map配置进行module id mapping
+        each( 
+            mappingIdIndex, 
+            function ( item ) {
+                if ( item.reg.test( baseId ) ) {
+
+                    each( item.v, function ( mapData ) {
+                        var key = mapData.k;
+                        var rule = createPrefixRegexp( key );
+                        
+                        if ( rule.test( moduleId ) ) {
+                            moduleId = moduleId.replace( key, mapData.v );
+                            return false;
+                        }
+                    } );
+
+                    return false;
+                }
+            }
+        );
         
         if ( resourceId ) {
             var module = modGetModuleExports( moduleId );
@@ -1486,7 +1431,6 @@ var require;
             moduleId += '!' + resourceId;
         }
         
-        cache[ id ] = moduleId;
         return moduleId;
     }
 
@@ -1530,8 +1474,7 @@ var require;
             basePath.length = baseLen - cutBaseTerms;
             namePath = namePath.slice( cutNameTerms );
 
-            basePath.push.apply( basePath, namePath );
-            return basePath.join( '/' );
+            return basePath.concat( namePath ).join( '/' );
         }
 
         return id;
@@ -1608,38 +1551,6 @@ var require;
         }
 
         return null;
-    }
-
-    /**
-     * 基于map配置项的id映射
-     * 
-     * @inner
-     * @param {string} id 模块id
-     * @param {string} baseId 当前环境的模块id
-     * @return {string}
-     */
-    function mappingId( id, baseId ) {
-        each( 
-            mappingIdIndex, 
-            function ( item ) {
-                if ( item.reg.test( baseId ) ) {
-
-                    each( item.v, function ( mapData ) {
-                        var key = mapData.k;
-                        var rule = createPrefixRegexp( key );
-                        
-                        if ( rule.test( id ) ) {
-                            id = id.replace( key, mapData.v );
-                            return false;
-                        }
-                    } );
-
-                    return false;
-                }
-            }
-        );
-
-        return id;
     }
 
     /**
