@@ -16,6 +16,10 @@ uglifyjs dist/src/esl.source.min.js -m -c -o dist/src/esl.min.js
 uglifyjs src/js.js -m -c -o dist/src/js.js
 uglifyjs src/css.js -m -c -o dist/src/css.js
 
+gzip -kf dist/src/esl.js
+gzip -kf dist/src/esl.min.js
+
+
 cp -r test dist/test
 cp -r test dist/test-min
 
