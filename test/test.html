@@ -4,7 +4,8 @@
 <meta charset="UTF-8" />
 <title>loader test</title>
 
-<script src="impl/esl/esl.js"></script>
+<script src="../src/esl2.js"></script>
+<!--script src="impl/esl/esl.js"></script-->
 <!--script src="impl/requirejs/require.js"></script-->
 <!--script src="impl/needs/needs.js"></script-->
 <!--script src="impl/lsjs/lsjs.js"></script-->
@@ -113,15 +114,31 @@ require.config( {
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <td><input value="amd/simpleCircleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/simpleCircleDependency2" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/simpleCircleDependency3" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <td><input value="amd/circleDependency" type="button"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
-        <td><input value="amd/circleDependency2" type="button" data-ignore="timestat"></td>
+        <td><input value="amd/complexCircleDependency" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
-        <td><input value="amd/complexCircleDependency" type="button" data-ignore="timestat"></td>
+        <td><input value="amd/complexCircleDependency2" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/complexCircleDependency3" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
@@ -180,6 +197,10 @@ require.config( {
     </tr>
     <tr>
         <td><input value="amd/combineplugin" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/combineplugin2" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
@@ -393,7 +414,7 @@ function urlArgs( stateTd, callback ) {
         var target = e.srcElement || e.target;
 
         if ( target.tagName == 'INPUT' && target.getAttribute( 'type' ) == 'button' ) {
-            checking( target );
+            checking( target, new Function() );
         }
     };
 
@@ -428,10 +449,16 @@ function urlArgs( stateTd, callback ) {
     }
 
 
-    var buttons = document.getElementsByTagName( 'input' )
+    var inputs = document.getElementsByTagName( 'input' );
+    var len = inputs.length;
+    var buttons = [];
+    while ( len-- ) {
+        buttons.unshift( inputs[ len ] );
+    }
+
     var index = 0;
-    var len = buttons.length;
-    function checkNext( ignoreTag ) {
+    len = buttons.length;
+    function checkNext() {
         if ( index < len ) {
             var button = buttons[ index++ ];
             if ( button.disabled 
@@ -454,7 +481,10 @@ function urlArgs( stateTd, callback ) {
     if ( /[\?|]autostart(-([a-z]+))?/.test( location.search ) ) {
         var now = new Date;
         autostartIgnore = RegExp.$2;
-        checkNext();
+        setTimeout(function () {
+            now = new Date;
+            checkNext();
+        }, 1);
     }
     
 })();
