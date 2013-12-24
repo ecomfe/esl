@@ -325,61 +325,58 @@ var require;
                     });
             }
 
-            each(
-                deps,
-                function ( depId, index ) {
-                    var idInfo = parseId( depId );
-                    var absId = normalize( idInfo.module, module.id );
-                    var moduleInfo, resInfo;
+            each( deps, function ( depId, index ) {
+                var idInfo = parseId( depId );
+                var absId = normalize( idInfo.module, module.id );
+                var moduleInfo, resInfo;
 
-                    if ( absId && !BUILDIN_MODULE[ absId ] ) {
-                        // 如果依赖是一个资源，将其信息添加到module.depResources
-                        // 
-                        // module.depResources中的项有可能是重复的。
-                        // 在这个阶段，加载resource的module可能还未defined，导致此时resource id无法被normalize。
-                        // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
-                        // - js!../name.js
-                        // - js!a/name.js
-                        // - ../../js!../name.js
-                        // 
-                        // 所以加载资源的module ready时，需要遍历module.depResources进行处理
-                        if ( idInfo.resource ) {
-                            resInfo = {
-                                id       : depId,
-                                module   : absId,
-                                resource : idInfo.resource
-                            };
-                            module.pluginModules[ absId ] = 1;
-                            module.depResources.push( resInfo );
-                        }
-
-                        // 对依赖模块的id normalize能保证正确性，在此处进行去重
-                        moduleInfo = module.depModulesIndex[ absId ];
-                        if ( !moduleInfo ) {
-                            moduleInfo = {
-                                id       : idInfo.module,
-                                absId    : absId,
-                                hard     : index < hardDependsCount,
-                                circular : CIRCULAR_DEP_UNREADY
-                            };
-                            module.depModules.push( moduleInfo );
-                            module.depModulesIndex[ absId ] = moduleInfo;
-                            addRequireModule( absId );
-                            modMonitorDependencyDefined( module.id, absId );
-                        }
-                    }
-                    else {
-                        moduleInfo = { absId: absId };
+                if ( absId && !BUILDIN_MODULE[ absId ] ) {
+                    // 如果依赖是一个资源，将其信息添加到module.depResources
+                    // 
+                    // module.depResources中的项有可能是重复的。
+                    // 在这个阶段，加载resource的module可能还未defined，导致此时resource id无法被normalize。
+                    // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
+                    // - js!../name.js
+                    // - js!a/name.js
+                    // - ../../js!../name.js
+                    // 
+                    // 所以加载资源的module ready时，需要遍历module.depResources进行处理
+                    if ( idInfo.resource ) {
+                        resInfo = {
+                            id       : depId,
+                            module   : absId,
+                            resource : idInfo.resource
+                        };
+                        module.pluginModules[ absId ] = 1;
+                        module.depResources.push( resInfo );
                     }
 
-                    // 如果当前正在分析的依赖项是define中声明的，
-                    // 则记录到module.factoryDeps中
-                    // 在factory invoke前将用于生成invoke arguments
-                    if ( index < declareDepsCount ) {
-                        module.factoryDeps.push( resInfo || moduleInfo );
+                    // 对依赖模块的id normalize能保证正确性，在此处进行去重
+                    moduleInfo = module.depModulesIndex[ absId ];
+                    if ( !moduleInfo ) {
+                        moduleInfo = {
+                            id       : idInfo.module,
+                            absId    : absId,
+                            hard     : index < hardDependsCount,
+                            circular : CIRCULAR_DEP_UNREADY
+                        };
+                        module.depModules.push( moduleInfo );
+                        module.depModulesIndex[ absId ] = moduleInfo;
+                        addRequireModule( absId );
+                        modMonitorDependencyDefined( module.id, absId );
                     }
                 }
-            );
+                else {
+                    moduleInfo = { absId: absId };
+                }
+
+                // 如果当前正在分析的依赖项是define中声明的，
+                // 则记录到module.factoryDeps中
+                // 在factory invoke前将用于生成invoke arguments
+                if ( index < declareDepsCount ) {
+                    module.factoryDeps.push( resInfo || moduleInfo );
+                }
+            } );
 
             module.state = MODULE_ANALYZED;
             modTryDefine( module );
@@ -416,7 +413,6 @@ var require;
 
                             res.absId = normalize( res.id, moduleId );
                             modAddDefinedListener( res.absId, tryDefine );
-
                             nativeRequire( [ res.absId ], null, moduleId );
                         }
                     );
