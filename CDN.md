@@ -8,6 +8,18 @@ ESL的每个版本，都会将压缩后的资源通过CDN发布，便于开发�
 3. `source`: 源码版。完整的esl源码，可用于开发过程调试。
 
 
+### 1.6.8
+
+```html
+<!-- normal -->
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-6-8/esl.js"></script>
+
+<!-- min -->
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-6-8/esl.min.js"></script>
+
+<!-- source -->
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-6-8/esl.source.js"></script>
+```
 
 ### 1.6.6
 
