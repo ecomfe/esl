@@ -560,7 +560,8 @@ var require;
                 if ( /^\[MODULE_MISS\]"([^"]+)/.test( ex.message ) ) {
                     // 出错，则说明在factory的运行中，该require的模块是需要的
                     // 所以把它加入强依赖中
-                    module.depMsIndex[ RegExp.$1 ].hard = 1;
+                    var hardCirclurDep = module.depMsIndex[ RegExp.$1 ];
+                    hardCirclurDep && (hardCirclurDep.hard = 1);
                     return;
                 }
 
