@@ -106,7 +106,7 @@ var require;
             }
 
             each(
-                modModules[ id ].depModules || [],
+                modModules[ id ].depMs || [],
                 function ( dep ) {
                     var depId = dep.absId;
                     if ( !modModules[ depId ] && !missModulesMap[ depId ] ) {
@@ -241,24 +241,24 @@ var require;
         // config: 用于获取模块配置信息的函数（AMD定义）
         // state: 模块当前状态
         // require: local require函数
-        // depModules: 实际依赖的模块集合，数组形式
-        // depModulesIndex: 实际依赖的模块集合，表形式，便于查找
-        // depResources: 实际依赖的资源集合
-        // pluginModules: 用于加载资源的模块集合，key是模块名，value是1，仅用于快捷查找
+        // depMs: 实际依赖的模块集合，数组形式
+        // depMsIndex: 实际依赖的模块集合，表形式，便于查找
+        // depRs: 实际依赖的资源集合
+        // depPMs: 用于加载资源的模块集合，key是模块名，value是1，仅用于快捷查找
         // ------------------------------------
         var module = {
-            id              : id,
-            deps            : dependencies || ['require', 'exports', 'module'],
-            factoryDeps     : [],
-            factory         : factory,
-            exports         : {},
-            config          : moduleConfigGetter,
-            state           : MODULE_PRE_DEFINED,
-            require         : createLocalRequire( id ),
-            depModules      : [],
-            depModulesIndex : {},
-            depResources    : [],
-            pluginModules   : {}
+            id          : id,
+            deps        : dependencies || ['require', 'exports', 'module'],
+            factoryDeps : [],
+            factory     : factory,
+            exports     : {},
+            config      : moduleConfigGetter,
+            state       : MODULE_PRE_DEFINED,
+            require     : createLocalRequire( id ),
+            depMs       : [],
+            depMsIndex  : {},
+            depRs       : [],
+            depPMs      : {}
         };
 
         // 将模块存入容器
@@ -331,28 +331,28 @@ var require;
                 var moduleInfo, resInfo;
 
                 if ( absId && !BUILDIN_MODULE[ absId ] ) {
-                    // 如果依赖是一个资源，将其信息添加到module.depResources
+                    // 如果依赖是一个资源，将其信息添加到module.depRs
                     // 
-                    // module.depResources中的项有可能是重复的。
+                    // module.depRs中的项有可能是重复的。
                     // 在这个阶段，加载resource的module可能还未defined，导致此时resource id无法被normalize。
                     // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
                     // - js!../name.js
                     // - js!a/name.js
                     // - ../../js!../name.js
                     // 
-                    // 所以加载资源的module ready时，需要遍历module.depResources进行处理
+                    // 所以加载资源的module ready时，需要遍历module.depRs进行处理
                     if ( idInfo.resource ) {
                         resInfo = {
                             id       : depId,
                             module   : absId,
                             resource : idInfo.resource
                         };
-                        module.pluginModules[ absId ] = 1;
-                        module.depResources.push( resInfo );
+                        module.depPMs[ absId ] = 1;
+                        module.depRs.push( resInfo );
                     }
 
                     // 对依赖模块的id normalize能保证正确性，在此处进行去重
-                    moduleInfo = module.depModulesIndex[ absId ];
+                    moduleInfo = module.depMsIndex[ absId ];
                     if ( !moduleInfo ) {
                         moduleInfo = {
                             id       : idInfo.module,
@@ -360,8 +360,8 @@ var require;
                             hard     : index < hardDependsCount,
                             circular : CIRCULAR_DEP_UNREADY
                         };
-                        module.depModules.push( moduleInfo );
-                        module.depModulesIndex[ absId ] = moduleInfo;
+                        module.depMs.push( moduleInfo );
+                        module.depMsIndex[ absId ] = moduleInfo;
                         addRequireModule( absId );
                         modMonitorDependencyDefined( module.id, absId );
                     }
@@ -403,9 +403,9 @@ var require;
                 var module = modModules[ moduleId ];
 
                 // 对依赖的resource先进行normalize，然后尝试加载
-                if ( module.pluginModules[ depId ] ) {
+                if ( module.depPMs[ depId ] ) {
                     each( 
-                        module.depResources, 
+                        module.depRs, 
                         function ( res ) {
                             if ( res.absId || res.module !== depId ) {
                                 return;
@@ -463,7 +463,7 @@ var require;
 
             // 先判断resource是否加载完成。如果resource未加载完成，则认为未准备好
             each(
-                module.depResources,
+                module.depRs,
                 function ( dep ) {
                     if ( !( dep.absId && modIsDefined( dep.absId ) ) ) {
                         readyState = DEP_UNREADY;
@@ -481,7 +481,7 @@ var require;
             // 2. 是否强依赖
             // 3. 是否循环依赖
             each(
-                module.depModules,
+                module.depMs,
                 function ( dep ) {
                     if ( modIsDefined( dep.absId ) ) {
                         return;
@@ -560,7 +560,7 @@ var require;
                 if ( /^\[MODULE_MISS\]"([^"]+)/.test( ex.message ) ) {
                     // 出错，则说明在factory的运行中，该require的模块是需要的
                     // 所以把它加入强依赖中
-                    module.depModulesIndex[ RegExp.$1 ].hard = 1;
+                    module.depMsIndex[ RegExp.$1 ].hard = 1;
                     return;
                 }
 
@@ -589,7 +589,7 @@ var require;
             if ( !circularDependenciesTried ) {
                 circularDependenciesTried = 1;
                 each( 
-                    module.depModules, 
+                    module.depMs, 
                     function ( dep ) {
                         if ( dep.circular === CIRCULAR_DEP_YES ) {
                             modTryInvokeFactory( dep.absId );
@@ -642,7 +642,7 @@ var require;
             return true;
         }
 
-        var deps = module.depModules;
+        var deps = module.depMs;
         var len = deps.length;
 
         while ( len-- ) {
@@ -712,7 +712,7 @@ var require;
             return CIRCULAR_DEP_YES;
         }
         
-        var deps = module && module.depModules;
+        var deps = module && module.depMs;
         if ( deps ) {
             var len = deps.length;
 
