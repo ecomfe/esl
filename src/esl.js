@@ -300,8 +300,6 @@ var require;
             requireModulesIndex[ id ] = 1;
         }
 
-        
-
         each( modModuleList, function ( module ) {
             if ( module.state > MODULE_PRE_DEFINED ) {
                 return;
@@ -363,7 +361,6 @@ var require;
                         module.depMs.push( moduleInfo );
                         module.depMsIndex[ absId ] = moduleInfo;
                         addRequireModule( absId );
-                        modMonitorDependencyDefined( module.id, absId );
                     }
                 }
                 else {
@@ -379,6 +376,12 @@ var require;
             } );
 
             module.state = MODULE_ANALYZED;
+            each(
+                module.depMs, 
+                function ( moduleInfo ) {
+                    modMonitorDependencyDefined( module.id, moduleInfo.absId );
+                }
+            );
             modTryDefine( module );
         });
 
