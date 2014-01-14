@@ -203,6 +203,10 @@ require.config( {
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <td><input value="multiResources" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <th colspan="2" align="left">CSS Plugin:</th>
     </tr>
     <tr>
@@ -348,6 +352,21 @@ function localLoadCss( stateTd, callback ) {
 
         callback();
     } );
+}
+
+function multiResources( stateTd, callback ) {
+    stateTd.className = 'checking';
+    require(['multiResources/p'], function () {
+        require(['multiResources/index'], function ( index ) {
+            if ( index.check() ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+            callback();
+        });
+    });
 }
 
 function urlArgs( stateTd, callback ) {
