@@ -153,6 +153,10 @@ require.config( {
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <td><input value="lazyDefine" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <th colspan="2" align="left">CJS:</th>
     </tr>
     <tr>
@@ -287,6 +291,22 @@ function checkNormalModule( name, stateTd, module, callback ) {
     if ( typeof callback == 'function' ) {
         setTimeout( callback, 1 );
     }
+}
+
+function lazyDefine( stateTd, callback ) {
+    require( [ 'amd/lazyDefine/index' ], function ( index ) {
+        if ( window.__eslIsLazyDefine && index.name == 'amd/lazyDefine/index' ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    } );
 }
 
 function loadResource( stateTd, callback ) {
