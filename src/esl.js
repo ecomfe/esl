@@ -34,8 +34,9 @@ var require;
     // 模块状态枚举量
     var MODULE_PRE_DEFINED = 1;
     var MODULE_ANALYZED = 2;
-    var MODULE_DEFINED = 3;
-    var MODULE_COMPLETED = 4;
+    var MODULE_PREPARED = 3;
+    var MODULE_DEFINED = 4;
+    var MODULE_COMPLETED = 5;
 
     /**
      * 全局require函数
@@ -370,22 +371,17 @@ var require;
                 // 如果当前正在分析的依赖项是define中声明的，
                 // 则记录到module.factoryDeps中
                 // 在factory invoke前将用于生成invoke arguments
-                if ( index < declareDepsCount ) {
+                // if ( index < declareDepsCount ) {
+                if ( index < hardDependsCount ) {
                     module.factoryDeps.push( resInfo || moduleInfo );
                 }
             } );
 
             module.state = MODULE_ANALYZED;
-            each(
-                module.depMs, 
-                function ( moduleInfo ) {
-                    modMonitorDependencyDefined( module.id, moduleInfo.absId );
-                }
-            );
-            modTryDefine( module );
+            modPrepare( module.id );
         });
 
-        nativeRequire( requireModules );
+        nativeRequire( requireModules, null, null, 1 );
     }
 
     /**
@@ -395,18 +391,20 @@ var require;
      * @param {string} moduleId 模块id
      * @param {string} depId 依赖模块id
      */
-    function modMonitorDependencyDefined( moduleId, depId ) {
-        function tryDefine() {
-            modTryInvokeFactory( moduleId );
+    function modMonitorDependencyPrepared( moduleId, depId ) {
+        function tryUpdatePreparedState() {
+            modUpdatePreparedState( moduleId );
         }
 
-        modAddDefinedListener( 
-            depId, 
+        modOn( 
+            depId,
+            MODULE_PREPARED,
             function () {
                 var module = modModules[ moduleId ];
 
                 // 对依赖的resource先进行normalize，然后尝试加载
                 if ( module.depPMs[ depId ] ) {
+                    modTryInvokeFactory( depId );
                     each( 
                         module.depRs, 
                         function ( res ) {
@@ -415,32 +413,16 @@ var require;
                             }
 
                             res.absId = normalize( res.id, moduleId );
-                            modAddDefinedListener( res.absId, tryDefine );
+                            modOn( res.absId, MODULE_DEFINED, tryUpdatePreparedState );
                             nativeRequire( [ res.absId ], null, moduleId );
                         }
                     );
                 }
 
-                tryDefine();
+                tryUpdatePreparedState();
             }
         );
     }
-
-    // 依赖准备状态，分成以下几种
-    // -------------------
-    // 未准备好：
-    // 依赖模块链未加载完成。此时继续等待
-    // 
-    // 已经分析完成：
-    // 此时所有依赖模块链都已加载完成，但依赖模块未完成定义。可以尝试对循环依赖的模块进行定义
-    // 
-    // 已准备好：
-    // 1. 强依赖已经完成定义
-    // 2. 非循环依赖已经完成定义
-    // --------------------
-    var DEP_UNREADY = 0;
-    var DEP_ANALYZED = 1;
-    var DEP_READY = 2;
 
     /**
      * 等待模块依赖加载完成
@@ -449,70 +431,18 @@ var require;
      * @inner
      * @param {Object} module 模块对象
      */
-    function modTryDefine( module ) {
-        var id = module.id;
-
+    function modPrepare( id ) {
+        var module = modModules[ id ];
         module.invokeFactory = invokeFactory;
-        invokeFactory();
-
-        /**
-         * 检查依赖加载完成的状态
-         * 
-         * @inner
-         * @return {number}
-         */
-        function checkInvokeReadyState() {
-            var readyState = DEP_READY;
-
-            // 先判断resource是否加载完成。如果resource未加载完成，则认为未准备好
-            each(
-                module.depRs,
-                function ( dep ) {
-                    if ( !( dep.absId && modIsDefined( dep.absId ) ) ) {
-                        readyState = DEP_UNREADY;
-                        return false;
-                    }
-                }
-            );
-
-            if ( readyState !== DEP_READY ) {
-                return readyState;
+        
+        each(
+            module.depMs, 
+            function ( moduleInfo ) {
+                modMonitorDependencyPrepared( id, moduleInfo.absId );
             }
-
-            // 检查所有依赖模块，根据以下因素处理readyState
-            // 1. 是否定义完成
-            // 2. 是否强依赖
-            // 3. 是否循环依赖
-            each(
-                module.depMs,
-                function ( dep ) {
-                    if ( modIsDefined( dep.absId ) ) {
-                        return;
-                    }
-
-                    // dep.circular相当于一层cache，尽量减少modHasCircularDependency多次调用的开销
-                    if ( dep.circular === CIRCULAR_DEP_UNREADY ) {
-                        dep.circular = modHasCircularDependency( id, dep.absId );
-                    }
-
-                    switch ( dep.circular ) {
-                        case CIRCULAR_DEP_YES:
-                            if ( dep.hard ) {
-                                readyState = DEP_ANALYZED;
-                            }
-                            break;
-                        case CIRCULAR_DEP_NO:
-                            readyState = DEP_ANALYZED;
-                            break;
-                        case CIRCULAR_DEP_UNREADY:
-                            readyState = DEP_UNREADY;
-                            return false;
-                    }
-                }
-            );
-
-            return readyState;
-        }
+        );
+        
+        modUpdatePreparedState( id );
 
         /**
          * 初始化模块
@@ -520,25 +450,34 @@ var require;
          * @inner
          */
         function invokeFactory() {
-            if ( module.state >= MODULE_DEFINED ) {
-                return;
-            }
-
-            // 先尝试完成循环依赖模块的定义
-            var invokeReadyState = checkInvokeReadyState();
-            if ( invokeReadyState >= DEP_ANALYZED ) {
-                tryCircularDependencies();
-            }
-
-            if ( invokeReadyState < DEP_READY ) {
+            if ( module.state !== MODULE_PREPARED ) {
                 return;
             }
 
             // 拼接factory invoke所需的arguments
+            var factoryReady = 1;
             var factoryDeps = [];
-            each( module.factoryDeps, function ( dep ) {
-                factoryDeps.push( dep.absId );
-            } );
+            each( 
+                module.factoryDeps, 
+                function ( dep ) {
+                    var depId = dep.absId;
+
+                    if ( !BUILDIN_MODULE[ depId ] ) {
+                        modTryInvokeFactory( depId );
+                        if ( !modIsDefined( depId ) ) {
+                            factoryReady = 0;
+                            return false;
+                        }
+                    }
+
+                    factoryDeps.push( depId );
+                }
+            );
+
+            if ( !factoryReady ) {
+                return;
+            }
+
             var args = modGetModulesExports( 
                 factoryDeps, 
                 {
@@ -565,6 +504,7 @@ var require;
                     // 所以把它加入强依赖中
                     var hardCirclurDep = module.depMsIndex[ RegExp.$1 ];
                     hardCirclurDep && (hardCirclurDep.hard = 1);
+                    module.state = MODULE_ANALYZED;
                     return;
                 }
 
@@ -573,35 +513,97 @@ var require;
 
             // 只把factory call代码放在try里
             // 避免后续操作因为try而吞掉错误
-            module.state = MODULE_DEFINED;
             module.invokeFactory = null;
-            modFireDefined( id );
+            modStateChange( id, MODULE_DEFINED );
+        }
+    }
+
+    // 依赖准备状态，分成以下几种
+    // -------------------
+    // 未准备好：
+    // 依赖模块链未加载完成。此时继续等待
+    // 
+    // 已经分析完成：
+    // 此时所有依赖模块链都已加载完成，但依赖模块未完成定义。可以尝试对循环依赖的模块进行定义
+    // 
+    // 已准备好：
+    // 1. 强依赖已经完成定义
+    // 2. 非循环依赖已经完成定义
+    // --------------------
+    var DEP_UNREADY = 0;
+    var DEP_ANALYZED = 1;
+    var DEP_READY = 2;
+
+    /**
+     * 检查依赖加载完成的状态
+     * 
+     * @inner
+     */
+    function modUpdatePreparedState( id ) {
+        if ( modIsPrepared( id ) ) {
+            return;
         }
 
-        var circularDependenciesTried;
+        var module = modModules[ id ];
+        var state = DEP_READY;
 
-        /**
-         * 尝试完成循环依赖模块的定义
-         * 
-         * 尝试的前提条件是依赖模块链已经加载完成
-         * 在该条件下如果循环依赖是活的，尝试一圈一定有解（依赖模块会调用同样的方法，递归尝试）
-         * 所以只尝试一次，并且对标志变量的设置必须在执行之前，否则碰到死循环依赖将卡死
-         * 
-         * @inner
-         */
-        function tryCircularDependencies() {
-            if ( !circularDependenciesTried ) {
-                circularDependenciesTried = 1;
-                each( 
-                    module.depMs, 
-                    function ( dep ) {
-                        if ( dep.circular === CIRCULAR_DEP_YES ) {
-                            modTryInvokeFactory( dep.absId );
-                        }
+        // 先判断resource是否加载完成。如果resource未加载完成，则认为未准备好
+        each(
+            module.depRs,
+            function ( dep ) {
+                if ( !( dep.absId && modIsDefined( dep.absId ) ) ) {
+                    state = DEP_UNREADY;
+                    return false;
+                }
+            }
+        );
+
+        if ( state === DEP_READY ) {
+            // 检查所有依赖模块，根据以下因素处理state
+            // 1. 是否定义完成
+            // 2. 是否强依赖
+            // 3. 是否循环依赖
+            each(
+                module.depMs,
+                function ( dep ) {
+                    if ( modIsPrepared( dep.absId ) ) {
+                        return;
                     }
-                );
+
+                    // dep.circular相当于一层cache
+                    // 尽量减少modHasCircularDependency多次调用的开销
+                    if ( dep.circular === CIRCULAR_DEP_UNREADY ) {
+                        dep.circular = modHasCircularDependency( id, dep.absId );
+                    }
+
+                    switch ( dep.circular ) {
+                        case CIRCULAR_DEP_YES:
+                            if ( dep.hard ) {
+                                state = DEP_ANALYZED;
+                            }
+                            break;
+                        case CIRCULAR_DEP_NO:
+                            state = DEP_ANALYZED;
+                            break;
+                        case CIRCULAR_DEP_UNREADY:
+                            state = DEP_UNREADY;
+                            return false;
+                    }
+                }
+            );
+        }
+
+        module.depState = state;
+        if ( state >= DEP_ANALYZED ) {
+            modStateChange( id, MODULE_PREPARED );
+            if ( modAutoInvoke[ id ] ) {
+                modTryInvokeFactory( id );
             }
         }
+    }
+
+    function modIsPrepared( id ) {
+        return modModules[ id ] && modModules[ id ].state >= MODULE_PREPARED;
     }
 
     /**
@@ -633,12 +635,12 @@ var require;
      * @param {string} id 模块标识
      * @return {boolean}
      */
-    function modIsCompleted( id, visited ) {
+    function modIsCompleted( id, notEntry, visited ) {
         var module = modModules[ id ];
         visited = visited || {};
         visited[ id ] = 1;
 
-        if ( !module || module.state < MODULE_DEFINED ) {
+        if ( !module || module.state < ( notEntry ? MODULE_PREPARED : MODULE_DEFINED ) ) {
             return false;
         }
 
@@ -647,20 +649,22 @@ var require;
         }
 
         var deps = module.depMs;
-        var len = deps.length;
+        if ( isArray( deps ) ) {
+            var len = deps.length;
 
-        while ( len-- ) {
-            var depId = deps[ len ].absId;
-            if ( visited[ depId ] ) {
-                continue;
-            }
+            while ( len-- ) {
+                var depId = deps[ len ].absId;
+                if ( visited[ depId ] ) {
+                    continue;
+                }
 
-            if( !modIsCompleted( depId, visited ) ) {
-                return false;
+                if( !modIsCompleted( depId, 1, visited ) ) {
+                    return false;
+                }
             }
         }
 
-        module.state = MODULE_COMPLETED;
+        !notEntry && (module.state = MODULE_COMPLETED);
         return true;
     }
 
@@ -752,22 +756,34 @@ var require;
         }
     }
 
-    /**
-     * 模块定义完成的事件监听器
-     * 
-     * @inner
-     * @type {Object}
-     */
-    var modDefinedListener = {};
+    var modListeners = {};
 
-    /**
-     * 派发模块定义完成事件
-     * 
-     * @inner
-     * @param {string} id 模块标识
-     */
-    function modFireDefined( id ) {
-        var listeners = modDefinedListener[ id ] || [];
+    function modOn( id, state, listener ) {
+        var module = modModules[ id ];
+        if ( module && module.state >= state ) {
+            listener();
+            return;
+        }
+
+        var listenersBucket = modListeners[ state ];
+        if ( !listenersBucket ) {
+            listenersBucket = modListeners[ state ] = {};
+        }
+        
+        var listeners = listenersBucket[ id ];
+        if ( !listeners ) {
+            listeners = listenersBucket[ id ] = [];
+        }
+
+        listeners.push( listener );
+    }
+
+    function modStateChange( id, state ) {
+        var listenersBucket = modListeners[ state ] || {};
+        var listeners = listenersBucket[ id ] || [];
+        var module = modModules[ id ];
+        module.state = state;
+
         var len = listeners.length;
         while ( len-- ) {
             var listener = listeners[ len ];
@@ -776,32 +792,9 @@ var require;
 
         // 清理listeners
         listeners.length = 0;
-        delete modDefinedListener[ id ];
+        delete listenersBucket[ id ];
     }
 
-    /**
-     * 添加模块定义监听器
-     * 
-     * @inner
-     * @param {string} id 模块标识
-     * @param {Function} listener 模块定义监听器
-     * @param {boolean} lowPriority 是否低优先级触发
-     */
-    function modAddDefinedListener( id, listener, lowPriority ) {
-        if ( modIsDefined( id ) ) {
-            listener( id );
-            return;
-        }
-
-        var listeners = modDefinedListener[ id ];
-        if ( !listeners ) {
-            listeners = modDefinedListener[ id ] = [];
-        }
-
-        lowPriority 
-            ? listeners.unshift( listener )
-            : listeners.push( listener );
-    }
 
     /**
      * 获取模块的exports
@@ -866,6 +859,8 @@ var require;
         modAnalyse();
     }
     
+    var modAutoInvoke = {};
+
     /**
      * 获取模块
      * 
@@ -873,11 +868,15 @@ var require;
      * @param {Function=} callback 获取模块完成时的回调函数
      * @return {Object}
      */
-    function nativeRequire( ids, callback, baseId ) {
+    function nativeRequire( ids, callback, baseId, lazyInvoke ) {
         // 根据 https://github.com/amdjs/amdjs-api/wiki/require
         // It MUST throw an error if the module has not 
         // already been loaded and evaluated.
         if ( typeof ids === 'string' ) {
+            if ( !modIsDefined( ids ) ) {
+                modTryInvokeFactory( ids );
+            }
+
             if ( !modIsDefined( ids ) ) {
                 throw new Error( '[MODULE_MISS]"' + ids + '" is not exists!' );
             }
@@ -895,7 +894,8 @@ var require;
                     if ( !BUILDIN_MODULE[ id ] ) {
                         // 以低优先级触发模式挂载监听器
                         // 循环依赖中能先完成依赖其模块的定义
-                        modAddDefinedListener( id, tryFinishRequire, 1 );
+                        !lazyInvoke && (modAutoInvoke[ id ] = 1);
+                        modOn( id, MODULE_DEFINED, tryFinishRequire );
                         ( id.indexOf( '!' ) > 0 
                             ? loadResource
                             : loadModule
@@ -1016,9 +1016,8 @@ var require;
          * @param {*} value resource的值
          */
         function pluginOnload( value ) {
-            resource.state = MODULE_COMPLETED;
             resource.exports = value || true;
-            modFireDefined( pluginAndResource );
+            modStateChange( pluginAndResource, MODULE_DEFINED );
         }
 
         /**
@@ -1028,6 +1027,7 @@ var require;
          * @param {string} body 模块声明字符串
          */
         pluginOnload.fromText = function ( id, text ) {
+            modAutoInvoke[ id ] = 1;
             new Function( text )();
             completePreDefine( id );
         };
@@ -1705,4 +1705,5 @@ var require;
     // 暴露全局对象
     global.define = define;
     global.require = require;
+    window.modModules = modModules;
 })( this );
