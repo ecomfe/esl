@@ -195,10 +195,10 @@ var require;
         else {
             // 纪录到共享变量中，在load或readystatechange中处理
             // 标准浏览器下，使用匿名define时，将进入这个分支
-            wait4PreDefines.push( {
+            wait4PreDefine = {
                 deps    : dependencies,
                 factory : factory
-            } );
+            };
         }
     }
 
@@ -828,9 +828,9 @@ var require;
      * 主要存储匿名方式define的模块
      * 
      * @inner
-     * @type {Array}
+     * @type {Object}
      */
-    var wait4PreDefines = [];
+    var wait4PreDefine;
 
     /**
      * 完成模块预定义
@@ -838,25 +838,20 @@ var require;
      * @inner
      */
     function completePreDefine( currentId ) {
-        var preDefines = wait4PreDefines.slice( 0 );
-
-        wait4PreDefines.length = 0;
-        wait4PreDefines = [];
+        var preDefine = wait4PreDefine;
+        wait4PreDefine = null;
 
         // 预定义模块：
-        // 此时处理的模块都是匿名define的模块
-        each(
-            preDefines,
-            function ( module ) {
-                modPreDefine( 
-                    module.id || currentId, 
-                    module.deps, 
-                    module.factory
-                );
-            }
-        );
+        // 此时处理的模块是匿名define的模块
+        if ( preDefine ) {
+            modPreDefine( 
+                currentId, 
+                preDefine.deps, 
+                preDefine.factory
+            );
 
-        modAnalyse();
+            modAnalyse();
+        }
     }
     
     var modAutoInvoke = {};
