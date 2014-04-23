@@ -42,6 +42,11 @@ require.config( {
         'moduleconf/cat': {
             'desc': 'cat'
         }
+    },
+    noRequests: {
+        'noRequests/simple/cat': 'noRequests/simple/index',
+        'noRequests/all/cat': '*',
+        'noRequests/complex/child': [ 'noRequests/complex/index1', 'noRequests/complex/index2' ]
     }
 } );
 require.config( {
@@ -154,6 +159,10 @@ require.config( {
     </tr>
     <tr>
         <td><input value="lazyDefine" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="meaninglessDefine" type="button"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
@@ -272,9 +281,175 @@ require.config( {
         <td><input value="urlArgs" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <th colspan="2" align="left">Conf noRequests:</th>
+    </tr>
+    <tr>
+        <td><input value="simpleNoRequests" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="allNoRequests" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexNoRequests_match1" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexNoRequests_match2" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexNoRequests_noMatch" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexNoRequests_alone" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 </table>
 
 <script>
+function hasModuleRequest( moduleId ) {
+    var scripts = document.getElementsByTagName( 'script' );
+    var len = scripts.length;
+
+    while ( len-- ) {
+        if ( scripts[ len ].getAttribute( 'data-require-id' ) == moduleId ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function complexNoRequests_match1( stateTd, callback ) {
+    require( ['noRequests/complex/child/cat', 'noRequests/complex/index1' ],
+        function (cat, index) {
+            if ( 
+                !hasModuleRequest('noRequests/complex/child/cat') 
+                && cat.name == 'noRequests/complex/child/cat'
+                && index.name == 'noRequests/complex/index1'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function complexNoRequests_match2( stateTd, callback ) {
+    require( ['noRequests/complex/index2', 'noRequests/complex/child/dog'],
+        function (index, dog) {
+            if ( 
+                !hasModuleRequest('noRequests/complex/child/dog') 
+                && dog.name == 'noRequests/complex/child/dog'
+                && index.name == 'noRequests/complex/index2'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function complexNoRequests_noMatch( stateTd, callback ) {
+    require( ['noRequests/complex/child/tiger', 'noRequests/complex/index3' ],
+        function (tiger, index) {
+            if ( 
+                hasModuleRequest('noRequests/complex/child/tiger') 
+                && tiger.name == 'noRequests/complex/child/tiger'
+                && index.name == 'noRequests/complex/index3'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function complexNoRequests_alone( stateTd, callback ) {
+    require( ['noRequests/complex/child/lion', 'noRequests/complex/index3' ],
+        function (lion, index) {
+            if ( 
+                hasModuleRequest('noRequests/complex/child/lion') 
+                && lion.name == 'noRequests/complex/child/lion'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function simpleNoRequests( stateTd, callback ) {
+    require( ['noRequests/simple/cat', 'noRequests/simple/index' ],
+        function (cat, index) {
+            if ( 
+                !hasModuleRequest('noRequests/simple/cat') 
+                && cat.name == 'noRequests/simple/cat'
+                && index.name == 'noRequests/simple/index'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function allNoRequests( stateTd, callback ) {
+    require( ['noRequests/all/cat', 'noRequests/all/index' ],
+        function (cat, index) {
+            if ( 
+                !hasModuleRequest('noRequests/all/cat') 
+                && cat.name == 'noRequests/all/cat'
+                && index.name == 'noRequests/all/index'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+
 function checkNormalModule( name, stateTd, module, callback ) {
     if ( 
         module 
@@ -291,6 +466,17 @@ function checkNormalModule( name, stateTd, module, callback ) {
     if ( typeof callback == 'function' ) {
         setTimeout( callback, 1 );
     }
+}
+
+function meaninglessDefine( stateTd, callback ) {
+    define({});
+    require([ 'meaninglessDefine/index' ], function ( index ) {
+        stateTd.className = index.name == 'meaninglessDefine/index' ? 'pass' : 'fail';
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    })
 }
 
 function lazyDefine( stateTd, callback ) {
