@@ -863,7 +863,7 @@ var require;
      * @param {Function=} callback 获取模块完成时的回调函数
      * @return {Object}
      */
-    function nativeRequire( ids, callback, baseId, lazyInvoke ) {
+    function nativeRequire( ids, callback, baseId, lazyInvoke, noRequests ) {
         // 根据 https://github.com/amdjs/amdjs-api/wiki/require
         // It MUST throw an error if the module has not 
         // already been loaded and evaluated.
@@ -879,6 +879,7 @@ var require;
             return modGetModuleExports( ids );
         }
 
+        noRequests = noRequests || {};
         var isCallbackCalled = 0;
         if ( isArray( ids ) ) {
             tryFinishRequire();
@@ -891,10 +892,13 @@ var require;
                         // 循环依赖中能先完成依赖其模块的定义
                         !lazyInvoke && (modAutoInvoke[ id ] = 1);
                         modOn( id, MODULE_DEFINED, tryFinishRequire );
-                        ( id.indexOf( '!' ) > 0 
-                            ? loadResource
-                            : loadModule
-                        )( id, baseId );
+
+                        if ( !noRequests[ id ] ) {
+                            ( id.indexOf( '!' ) > 0 
+                                ? loadResource
+                                : loadModule
+                            )( id, baseId );
+                        }
                     }
                 }
             );
@@ -1064,6 +1068,7 @@ var require;
         // #begin-ignore
         waitSeconds : 0,
         // #end-ignore
+        noRequests  : {},
         urlArgs     : {}
     };
 
@@ -1149,6 +1154,8 @@ var require;
      */
     var urlArgsIndex;
 
+    var noRequestsIndex;
+
     /**
      * 创建配置信息内部索引
      * 
@@ -1201,6 +1208,22 @@ var require;
         // createUrlArgsIndex
         urlArgsIndex = kv2List( requireConf.urlArgs );
         urlArgsIndex.sort( descSorter );
+
+        noRequestsIndex = kv2List( requireConf.noRequests );
+        noRequestsIndex.sort( descSorter );
+        each( noRequestsIndex, function ( item ) {
+            var value = item.v;
+            var mapIndex = {};
+            item.v = mapIndex;
+
+            if ( !isArray( value ) ) {
+                value = [ value ];
+            }
+
+            each( value, function ( meetId ) {
+                mapIndex[ meetId ] = 1;
+            } );
+        } );
     }
 
     /**
@@ -1331,13 +1354,50 @@ var require;
                     pluginModules, 
                     function () {
                         var ids = [];
-                        each( 
+                        var pureModules = [];
+
+                        each(
                             requireId, 
-                            function ( id ) { 
-                                ids.push( normalize( id, baseId ) ); 
+                            function ( id ) {
+                                id = normalize( id, baseId );
+                                ids.push( id );
+                                id.indexOf( '!' ) < 0 && pureModules.push( id );
                             }
                         );
-                        nativeRequire( ids, callback, baseId );
+
+                        var noRequestModules = {};
+                        each(
+                            pureModules,
+                            function ( id ) {
+                                var meet;
+                                each( noRequestsIndex, function ( item ) {
+                                    if ( createPrefixRegexp( item.k ).test( id ) ) {
+                                        meet = item.v;
+                                        return false;
+                                    }
+                                } );
+
+                                if ( !meet ) {
+                                    return;
+                                }
+
+                                if ( meet[ '*' ] ) {
+                                    noRequestModules[ id ] = 1;
+                                    return;
+                                }
+
+                                each(
+                                    pureModules,
+                                    function ( meetId ) {
+                                        if ( meet[ meetId ] ) {
+                                            noRequestModules[ id ] = 1;
+                                            return false;
+                                        }
+                                    }
+                                );
+                            }
+                        );
+                        nativeRequire( ids, callback, baseId, 0, noRequestModules );
                     }, 
                     baseId
                 );
@@ -1700,5 +1760,4 @@ var require;
     // 暴露全局对象
     global.define = define;
     global.require = require;
-    window.modModules = modModules;
 })( this );
