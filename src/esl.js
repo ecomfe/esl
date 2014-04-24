@@ -101,7 +101,9 @@ var require;
         var hasError;
 
         for ( var id in modModules ) {
-            if ( !modIsDefined( id ) ) {
+            if ( !modIsPrepared( id ) 
+                || (modAutoInvoke[ id ] && !modIsDefined( id ))
+            ) {
                 hasError = 1;
                 hangModules.push( id );
             }
