@@ -97,31 +97,55 @@ var require;
     function waitTimeoutNotice() {
         var hangModules = [];
         var missModules = [];
+        var hangModulesMap = {};
         var missModulesMap = {};
-        var hasError;
 
-        for ( var id in modModules ) {
-            if ( !modIsPrepared( id ) 
-                || (modAutoInvoke[ id ] && !modIsDefined( id ))
-            ) {
-                hasError = 1;
+        function addHangModule( id ) {
+            if ( !hangModulesMap[ id ] ) {
+                hangModulesMap[ id ] = 1;
                 hangModules.push( id );
             }
+        }
 
+        function addMissModule( id ) {
+            if ( !missModulesMap[ id ] ) {
+                missModulesMap[ id ] = 1;
+                missModules.push( id );
+            }
+        }
+
+        var visited = {};
+        for ( var id in modAutoInvoke ) {
+            checkState( id );
+        }
+        
+        function checkState( id ) {
+            if ( visited[ id ] || modIsDefined( id ) ) {
+                return;
+            }
+
+            visited[ id ] = 1;
+            addHangModule( id );
+            
+            var module = modModules[ id ];
             each(
-                modModules[ id ].depMs || [],
+                module.depMs || [],
                 function ( dep ) {
                     var depId = dep.absId;
-                    if ( !modModules[ depId ] && !missModulesMap[ depId ] ) {
-                        hasError = 1;
-                        missModules.push( depId );
-                        missModulesMap[ depId ] = 1;
+                    if ( !modModules[ depId ] ) {
+                        addMissModule( depId );
+                    }
+                    else if ( dep.hard ) {
+                        checkState( depId );
+                    }
+                    else if ( !modIsPrepared( depId ) ) {
+                        addHangModule( depId );
                     }
                 }
             );
         }
 
-        if ( hasError ) {
+        if ( hangModules.length || missModules.length ) {
             throw new Error( '[MODULE_TIMEOUT]Hang( ' 
                 + ( hangModules.join( ', ' ) || 'none' )
                 + ' ) Miss( '
@@ -446,15 +470,19 @@ var require;
         
         modUpdatePreparedState( id );
 
+        var invoking;
+
         /**
          * 初始化模块
          * 
          * @inner
          */
         function invokeFactory() {
-            if ( module.state !== MODULE_PREPARED ) {
+            if ( invoking || module.state !== MODULE_PREPARED ) {
                 return;
             }
+
+            invoking = 1;
 
             // 拼接factory invoke所需的arguments
             var factoryReady = 1;
@@ -477,6 +505,7 @@ var require;
             );
 
             if ( !factoryReady ) {
+                invoking = 0;
                 return;
             }
 
@@ -501,6 +530,7 @@ var require;
                 }
             } 
             catch ( ex ) {
+                invoking = 0;
                 if ( /^\[MODULE_MISS\]"([^"]+)/.test( ex.message ) ) {
                     // 出错，则说明在factory的运行中，该require的模块是需要的
                     // 所以把它加入强依赖中
@@ -1762,4 +1792,5 @@ var require;
     // 暴露全局对象
     global.define = define;
     global.require = require;
+    window.modModules = modModules;
 })( this );
