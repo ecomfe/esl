@@ -99,7 +99,14 @@ var require;
         var missModules = [];
         var hangModulesMap = {};
         var missModulesMap = {};
+        var visited = {};
 
+        /**
+         * 添加hang错误模块
+         * 
+         * @inner
+         * @param {string} id 模块id
+         */
         function addHangModule( id ) {
             if ( !hangModulesMap[ id ] ) {
                 hangModulesMap[ id ] = 1;
@@ -107,19 +114,26 @@ var require;
             }
         }
 
+        /**
+         * 添加miss错误模块
+         * 
+         * @inner
+         * @param {string} id 模块id
+         */
         function addMissModule( id ) {
             if ( !missModulesMap[ id ] ) {
                 missModulesMap[ id ] = 1;
                 missModules.push( id );
             }
         }
-
-        var visited = {};
-        for ( var id in modAutoInvoke ) {
-            checkState( id );
-        }
         
-        function checkState( id ) {
+        /**
+         * 检查模块的加载错误
+         * 
+         * @inner
+         * @param {string} id 模块id
+         */
+        function checkError( id ) {
             if ( visited[ id ] || modIsDefined( id ) ) {
                 return;
             }
@@ -136,13 +150,17 @@ var require;
                         addMissModule( depId );
                     }
                     else if ( dep.hard ) {
-                        checkState( depId );
+                        checkError( depId );
                     }
                     else if ( !modIsPrepared( depId ) ) {
                         addHangModule( depId );
                     }
                 }
             );
+        }
+
+        for ( var id in modAutoInvoke ) {
+            checkError( id );
         }
 
         if ( hangModules.length || missModules.length ) {
@@ -254,10 +272,6 @@ var require;
      * @param {*} factory 模块定义函数或模块对象
      */
     function modPreDefine( id, dependencies, factory ) {
-        if ( modModules[ id ] ) {
-            return;
-        }
-
         // 模块内部信息包括
         // -----------------------------------
         // id: module id
@@ -273,24 +287,26 @@ var require;
         // depRs: 实际依赖的资源集合
         // depPMs: 用于加载资源的模块集合，key是模块名，value是1，仅用于快捷查找
         // ------------------------------------
-        var module = {
-            id          : id,
-            deps        : dependencies || ['require', 'exports', 'module'],
-            factoryDeps : [],
-            factory     : factory,
-            exports     : {},
-            config      : moduleConfigGetter,
-            state       : MODULE_PRE_DEFINED,
-            require     : createLocalRequire( id ),
-            depMs       : [],
-            depMsIndex  : {},
-            depRs       : [],
-            depPMs      : {}
-        };
+        if ( !modModules[ id ] ) {
+            var module = {
+                id          : id,
+                deps        : dependencies || ['require', 'exports', 'module'],
+                factoryDeps : [],
+                factory     : factory,
+                exports     : {},
+                config      : moduleConfigGetter,
+                state       : MODULE_PRE_DEFINED,
+                require     : createLocalRequire( id ),
+                depMs       : [],
+                depMsIndex  : {},
+                depRs       : [],
+                depPMs      : {}
+            };
 
-        // 将模块存入容器
-        modModules[ id ] = module;
-        modModuleList.push( module );
+            // 将模块存入容器
+            modModules[ id ] = module;
+            modModuleList.push( module );
+        }
     }
 
     var REQUIRE_RULE = /require\(\s*(['"'])([^'"]+)\1\s*\)/g;
@@ -359,7 +375,9 @@ var require;
                     // 如果依赖是一个资源，将其信息添加到module.depRs
                     // 
                     // module.depRs中的项有可能是重复的。
-                    // 在这个阶段，加载resource的module可能还未defined，导致此时resource id无法被normalize。
+                    // 在这个阶段，加载resource的module可能还未defined，
+                    // 导致此时resource id无法被normalize。
+                    // 
                     // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
                     // - js!../name.js
                     // - js!a/name.js
@@ -415,37 +433,43 @@ var require;
      * 
      * @inner
      * @param {string} moduleId 模块id
-     * @param {string} depId 依赖模块id
      */
-    function modMonitorDependencyPrepared( moduleId, depId ) {
-        function tryUpdatePreparedState() {
-            modUpdatePreparedState( moduleId );
+    function modMonitorDependenciesPrepared( id ) {
+        var module = modModules[ id ];
+        function updatePreparedState() {
+            modUpdatePreparedState( id );
         }
 
-        modOn( 
-            depId,
-            MODULE_PREPARED,
-            function () {
-                var module = modModules[ moduleId ];
+        each(
+            module.depMs, 
+            function ( moduleInfo ) {
+                var depId = moduleInfo.absId;
+                modOn( 
+                    depId,
+                    MODULE_PREPARED,
+                    function () {
+                        var module = modModules[ id ];
 
-                // 对依赖的resource先进行normalize，然后尝试加载
-                if ( module.depPMs[ depId ] ) {
-                    modTryInvokeFactory( depId );
-                    each( 
-                        module.depRs, 
-                        function ( res ) {
-                            if ( res.absId || res.module !== depId ) {
-                                return;
-                            }
+                        // 对依赖的resource先进行normalize，然后尝试加载
+                        if ( module.depPMs[ depId ] ) {
+                            modTryInvokeFactory( depId );
+                            each( 
+                                module.depRs, 
+                                function ( res ) {
+                                    if ( res.absId || res.module !== depId ) {
+                                        return;
+                                    }
 
-                            res.absId = normalize( res.id, moduleId );
-                            modOn( res.absId, MODULE_DEFINED, tryUpdatePreparedState );
-                            nativeRequire( [ res.absId ], null, moduleId );
+                                    res.absId = normalize( res.id, id );
+                                    modOn( res.absId, MODULE_DEFINED, updatePreparedState );
+                                    nativeRequire( [ res.absId ], null, id );
+                                }
+                            );
                         }
-                    );
-                }
-
-                tryUpdatePreparedState();
+                        
+                        updatePreparedState();
+                    }
+                );
             }
         );
     }
@@ -461,13 +485,7 @@ var require;
         var module = modModules[ id ];
         module.invokeFactory = invokeFactory;
         
-        each(
-            module.depMs, 
-            function ( moduleInfo ) {
-                modMonitorDependencyPrepared( id, moduleInfo.absId );
-            }
-        );
-        
+        modMonitorDependenciesPrepared( id );
         modUpdatePreparedState( id );
 
         var invoking;
@@ -789,6 +807,8 @@ var require;
     }
 
     var modListeners = {};
+    modListeners[ MODULE_PREPARED ] = {};
+    modListeners[ MODULE_DEFINED ] = {};
 
     function modOn( id, state, listener ) {
         var module = modModules[ id ];
@@ -798,10 +818,6 @@ var require;
         }
 
         var listenersBucket = modListeners[ state ];
-        if ( !listenersBucket ) {
-            listenersBucket = modListeners[ state ] = {};
-        }
-        
         var listeners = listenersBucket[ id ];
         if ( !listeners ) {
             listeners = listenersBucket[ id ] = [];
@@ -811,7 +827,7 @@ var require;
     }
 
     function modStateChange( id, state ) {
-        var listenersBucket = modListeners[ state ] || {};
+        var listenersBucket = modListeners[ state ];
         var listeners = listenersBucket[ id ] || [];
         var module = modModules[ id ];
         module.state = state;
@@ -1186,7 +1202,21 @@ var require;
      */
     var urlArgsIndex;
 
+    /**
+     * noRequests内部索引
+     * 
+     * @inner
+     * @type {Array}
+     */
     var noRequestsIndex;
+
+    var kDescSorter = createDescSorter();
+
+    function createKVSortedIndex( value, allowAsterisk ) {
+        var index = kv2List( value, 1, allowAsterisk );
+        index.sort( kDescSorter );
+        return index;
+    }
 
     /**
      * 创建配置信息内部索引
@@ -1195,28 +1225,20 @@ var require;
      */
     function createConfIndex() {
         requireConf.baseUrl = requireConf.baseUrl.replace( /\/$/, '' ) + '/';
-        var descSorter = createDescSorter();
 
-        // createPathsIndex
-        pathsIndex = kv2List( requireConf.paths );
-        pathsIndex.sort( descSorter );
+        // create paths index
+        pathsIndex = createKVSortedIndex( requireConf.paths );
 
-        // createMappingIdIndex
-        mappingIdIndex = kv2List( requireConf.map );
-        mappingIdIndex.sort( descSorter );
+        // create mappingId index
+        mappingIdIndex = createKVSortedIndex( requireConf.map, 1 );
         each(
             mappingIdIndex,
             function ( item ) {
-                var key = item.k;
-                item.v = kv2List( item.v );
-                item.v.sort( descSorter );
-                item.reg = key === '*'
-                    ? /^/
-                    : createPrefixRegexp( key );
+                item.v = createKVSortedIndex( item.v );
             }
         );
 
-        // createPackagesIndex
+        // create packages index
         packagesIndex = [];
         each( 
             requireConf.packages,
@@ -1237,12 +1259,11 @@ var require;
         );
         packagesIndex.sort( createDescSorter( 'name' ) );
 
-        // createUrlArgsIndex
-        urlArgsIndex = kv2List( requireConf.urlArgs );
-        urlArgsIndex.sort( descSorter );
+        // create urlArgs index
+        urlArgsIndex = createKVSortedIndex( requireConf.urlArgs );
 
-        noRequestsIndex = kv2List( requireConf.noRequests );
-        noRequestsIndex.sort( descSorter );
+        // create noRequests index
+        noRequestsIndex = createKVSortedIndex( requireConf.noRequests );
         each( noRequestsIndex, function ( item ) {
             var value = item.v;
             var mapIndex = {};
@@ -1288,9 +1309,8 @@ var require;
         // paths处理和匹配
         var isPathMap;
         each( pathsIndex, function ( item ) {
-            var key = item.k;
-            if ( createPrefixRegexp( key ).test( id ) ) {
-                url = url.replace( key, item.v );
+            if ( item.reg.test( id ) ) {
+                url = url.replace( item.k, item.v );
                 isPathMap = 1;
                 return false;
             }
@@ -1336,7 +1356,7 @@ var require;
         
         // urlArgs处理和匹配
         each( urlArgsIndex, function ( item ) {
-            if ( createPrefixRegexp( item.k ).test( id ) ) {
+            if ( item.reg.test( id ) ) {
                 appendUrlArgs( item.v );
                 return false;
             }
@@ -1403,7 +1423,7 @@ var require;
                             function ( id ) {
                                 var meet;
                                 each( noRequestsIndex, function ( item ) {
-                                    if ( createPrefixRegexp( item.k ).test( id ) ) {
+                                    if ( item.reg.test( id ) ) {
                                         meet = item.v;
                                         return false;
                                     }
@@ -1490,11 +1510,8 @@ var require;
                 if ( item.reg.test( baseId ) ) {
 
                     each( item.v, function ( mapData ) {
-                        var key = mapData.k;
-                        var rule = createPrefixRegexp( key );
-                        
-                        if ( rule.test( moduleId ) ) {
-                            moduleId = moduleId.replace( key, mapData.v );
+                        if ( mapData.reg.test( moduleId ) ) {
+                            moduleId = moduleId.replace( mapData.k, mapData.v );
                             return false;
                         }
                     } );
@@ -1647,14 +1664,21 @@ var require;
      * @param {Object} source 对象数据
      * @return {Array.<Object>}
      */
-    function kv2List( source ) {
+    function kv2List( source, keyMatchable, allowAsterisk ) {
         var list = [];
         for ( var key in source ) {
             if ( source.hasOwnProperty( key ) ) {
-                list.push( {
+                var item = {
                     k: key, 
                     v: source[ key ]
-                } );
+                };
+                list.push( item );
+
+                if ( keyMatchable ) {
+                    item.reg = key === '*' && allowAsterisk
+                        ? /^/
+                        : createPrefixRegexp( key );
+                }
             }
         }
 
@@ -1792,5 +1816,4 @@ var require;
     // 暴露全局对象
     global.define = define;
     global.require = require;
-    window.modModules = modModules;
 })( this );
