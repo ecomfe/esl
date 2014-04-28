@@ -77,7 +77,42 @@ var require;
      */
     function require( requireId, callback ) {
         // #begin-ignore
-        assertNotContainRelativeId( requireId );
+        // #begin assertNotContainRelativeId
+        // 确定require的模块id不包含相对id。用于global require，提前预防难以跟踪的错误出现
+        var invalidIds = [];
+
+        /**
+         * 监测模块id是否relative id
+         * 
+         * @inner
+         * @param {string} id 模块id
+         */
+        function monitor( id ) {
+            if ( id.indexOf( '.' ) === 0 ) {
+                invalidIds.push( id );
+            }
+        }
+
+        if ( typeof requireId === 'string' ) {
+            monitor( requireId );
+        }
+        else {
+            each( 
+                requireId, 
+                function ( id ) {
+                    monitor( id );
+                }
+            );
+        }
+
+        // 包含相对id时，直接抛出错误
+        if ( invalidIds.length > 0 ) {
+            throw new Error(
+                '[REQUIRE_FATAL]Relative ID is not allowed in global require: ' 
+                + invalidIds.join( ', ' )
+            );
+        }
+        // #end assertNotContainRelativeId
         
         // 超时提醒
         var timeout = requireConf.waitSeconds;
@@ -114,66 +149,50 @@ var require;
         var visited = {};
 
         /**
-         * 添加hang错误模块
-         * 
-         * @inner
-         * @param {string} id 模块id
-         */
-        function addHangModule( id ) {
-            if ( !hangModulesMap[ id ] ) {
-                hangModulesMap[ id ] = 1;
-                hangModules.push( id );
-            }
-        }
-
-        /**
-         * 添加miss错误模块
-         * 
-         * @inner
-         * @param {string} id 模块id
-         */
-        function addMissModule( id ) {
-            if ( !missModulesMap[ id ] ) {
-                missModulesMap[ id ] = 1;
-                missModules.push( id );
-            }
-        }
-        
-        /**
          * 检查模块的加载错误
          * 
          * @inner
          * @param {string} id 模块id
          */
-        function checkError( id ) {
+        function checkError( id, hard ) {
             if ( visited[ id ] || modIs( id, MODULE_DEFINED ) ) {
                 return;
             }
 
             visited[ id ] = 1;
-            addHangModule( id );
             
-            var module = modModules[ id ];
-            each(
-                module.depMs,
-                function ( dep ) {
-                    var depId = dep.absId;
-
-                    if ( !modModules[ depId ] ) {
-                        addMissModule( depId );
-                    }
-                    else if ( dep.hard ) {
-                        checkError( depId );
-                    }
-                    else if ( !modIs( depId, MODULE_PREPARED ) ) {
-                        addHangModule( depId );
-                    }
+            if ( !modIs( id, MODULE_PREPARED ) ) {
+                // HACK: 为gzip后体积优化，不做抽取
+                if ( !hangModulesMap[ id ] ) {
+                    hangModulesMap[ id ] = 1;
+                    hangModules.push( id );
                 }
-            );
+            }
+
+            var module = modModules[ id ];
+            if ( !module ) {
+                if ( !missModulesMap[ id ] ) {
+                    missModulesMap[ id ] = 1;
+                    missModules.push( id );
+                }
+            }
+            else if ( hard ) {
+                if ( !hangModulesMap[ id ] ) {
+                    hangModulesMap[ id ] = 1;
+                    hangModules.push( id );
+                }
+
+                each(
+                    module.depMs,
+                    function ( dep ) {
+                        checkError( dep.absId, dep.hard );
+                    }
+                );
+            }
         }
 
         for ( var id in autoDefineModules ) {
-            checkError( id );
+            checkError( id, 1 );
         }
 
         if ( hangModules.length || missModules.length ) {
@@ -296,7 +315,7 @@ var require;
         // state: 模块当前状态
         // require: local require函数
         // depMs: 实际依赖的模块集合，数组形式
-        // depMsIndex: 实际依赖的模块集合，表形式，便于查找
+        // depMkv: 实际依赖的模块集合，表形式，便于查找
         // depRs: 实际依赖的资源集合
         // depPMs: 用于加载资源的模块集合，key是模块名，value是1，仅用于快捷查找
         // ------------------------------------
@@ -311,7 +330,7 @@ var require;
                 state       : MODULE_PRE_DEFINED,
                 require     : createLocalRequire( id ),
                 depMs       : [],
-                depMsIndex  : {},
+                depMkv      : {},
                 depRs       : [],
                 depPMs      : {}
             };
@@ -321,9 +340,6 @@ var require;
             modModuleList.push( module );
         }
     }
-
-    var REQUIRE_RULE = /require\(\s*(['"'])([^'"]+)\1\s*\)/g;
-    var COMMENT_RULE = /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg;
 
     /**
      * 预分析模块
@@ -373,10 +389,12 @@ var require;
             if ( typeof factory === 'function' ) {
                 hardDependsCount = Math.min( factory.length, declareDepsCount );
                 factory.toString()
-                    .replace( COMMENT_RULE, '' )
-                    .replace( REQUIRE_RULE, function ( $0, $1, depId ) {
-                        deps.push( depId );
-                    });
+                    .replace( /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg, '' )
+                    .replace( /require\(\s*(['"'])([^'"]+)\1\s*\)/g, 
+                        function ( $0, $1, depId ) {
+                            deps.push( depId );
+                        }
+                    );
             }
 
             each( deps, function ( depId, index ) {
@@ -408,7 +426,7 @@ var require;
                     }
 
                     // 对依赖模块的id normalize能保证正确性，在此处进行去重
-                    moduleInfo = module.depMsIndex[ absId ];
+                    moduleInfo = module.depMkv[ absId ];
                     if ( !moduleInfo ) {
                         moduleInfo = {
                             id       : idInfo.module,
@@ -417,7 +435,7 @@ var require;
                             circular : CIRCULAR_DEP_UNREADY
                         };
                         module.depMs.push( moduleInfo );
-                        module.depMsIndex[ absId ] = moduleInfo;
+                        module.depMkv[ absId ] = moduleInfo;
                         addRequireModule( absId );
                     }
                 }
@@ -442,17 +460,17 @@ var require;
     }
 
     /**
-     * 监视模块的依赖定义完成，并尝试初始化
+     * 等待模块依赖加载完成
+     * 加载完成后尝试调用factory完成模块定义
      * 
      * @inner
-     * @param {string} moduleId 模块id
+     * @param {Object} module 模块对象
      */
-    function modMonitorDependenciesPrepared( id ) {
+    function modPrepare( id ) {
         var module = modModules[ id ];
-        function updatePreparedState() {
-            modUpdatePreparedState( id );
-        }
-
+        module.invokeFactory = invokeFactory;
+        
+        // 监视模块的依赖定义完成，并尝试初始化
         each( module.depMs, function ( dep ) {
             var depId = dep.absId;
 
@@ -477,21 +495,17 @@ var require;
                 updatePreparedState();
             } );
         } );
-    }
 
-    /**
-     * 等待模块依赖加载完成
-     * 加载完成后尝试调用factory完成模块定义
-     * 
-     * @inner
-     * @param {Object} module 模块对象
-     */
-    function modPrepare( id ) {
-        var module = modModules[ id ];
-        module.invokeFactory = invokeFactory;
-        
-        modMonitorDependenciesPrepared( id );
-        modUpdatePreparedState( id );
+        updatePreparedState();
+
+        /**
+         * 更新模块的prepared状态
+         * 
+         * @inner
+         */
+        function updatePreparedState() {
+            modUpdatePreparedState( id );
+        }
 
         var invoking;
 
@@ -527,49 +541,46 @@ var require;
                 }
             );
 
-            if ( !factoryReady ) {
-                invoking = 0;
-                return;
+            if ( factoryReady ) {
+                var args = modGetModulesExports( 
+                    factoryDeps, 
+                    {
+                        require : module.require,
+                        exports : module.exports,
+                        module  : module
+                    }
+                );
+                
+                // 调用factory函数初始化module
+                try {
+                    var factory = module.factory;
+                    var exports = typeof factory === 'function'
+                        ? factory.apply( global, args )
+                        : factory;
+
+                    if ( exports != null ) {
+                        module.exports = exports;
+                    }
+                } 
+                catch ( ex ) {
+                    invoking = 0;
+                    if ( /^\[MODULE_MISS\]"([^"]+)/.test( ex.message ) ) {
+                        // 出错，则说明在factory的运行中，该require的模块是需要的
+                        // 所以把它加入强依赖中
+                        var hardCirclurDep = module.depMkv[ RegExp.$1 ];
+                        hardCirclurDep && (hardCirclurDep.hard = 1);
+                        module.state = MODULE_ANALYZED;
+                        return;
+                    }
+
+                    throw ex;
+                }
+
+                // 只把factory call代码放在try里
+                // 避免后续操作因为try而吞掉错误
+                module.invokeFactory = null;
+                modStateChange( id, MODULE_DEFINED );
             }
-
-            var args = modGetModulesExports( 
-                factoryDeps, 
-                {
-                    require : module.require,
-                    exports : module.exports,
-                    module  : module
-                }
-            );
-            
-            // 调用factory函数初始化module
-            try {
-                var factory = module.factory;
-                var exports = typeof factory === 'function'
-                    ? factory.apply( global, args )
-                    : factory;
-
-                if ( exports != null ) {
-                    module.exports = exports;
-                }
-            } 
-            catch ( ex ) {
-                invoking = 0;
-                if ( /^\[MODULE_MISS\]"([^"]+)/.test( ex.message ) ) {
-                    // 出错，则说明在factory的运行中，该require的模块是需要的
-                    // 所以把它加入强依赖中
-                    var hardCirclurDep = module.depMsIndex[ RegExp.$1 ];
-                    hardCirclurDep && (hardCirclurDep.hard = 1);
-                    module.state = MODULE_ANALYZED;
-                    return;
-                }
-
-                throw ex;
-            }
-
-            // 只把factory call代码放在try里
-            // 避免后续操作因为try而吞掉错误
-            module.invokeFactory = null;
-            modStateChange( id, MODULE_DEFINED );
         }
     }
 
@@ -670,6 +681,20 @@ var require;
     }
 
     /**
+     * 尝试执行模块factory函数，进行模块初始化
+     * 
+     * @inner
+     * @param {string} id 模块id
+     */
+    function modTryInvokeFactory( id ) {
+        var module = modModules[ id ];
+
+        if ( module && module.state === MODULE_PREPARED ) {
+            module.invokeFactory();
+        }
+    }
+
+    /**
      * 判断模块是否定义完成，即模块与其依赖全部已定义
      * 
      * @inner
@@ -764,7 +789,7 @@ var require;
             return CIRCULAR_DEP_YES;
         }
         
-        var deps = module && (module.depMs || []);
+        var deps = module.depMs || [];
         var len = deps.length;
 
         while ( len-- ) {
@@ -782,20 +807,6 @@ var require;
         }
 
         return CIRCULAR_DEP_NO;
-    }
-
-    /**
-     * 尝试执行模块factory函数，进行模块初始化
-     * 
-     * @inner
-     * @param {string} id 模块id
-     */
-    function modTryInvokeFactory( id ) {
-        var module = modModules[ id ];
-
-        if ( module && module.invokeFactory ) {
-            module.invokeFactory();
-        }
     }
 
     /**
@@ -942,9 +953,8 @@ var require;
         if ( ids instanceof Array ) {
             tryFinishRequire();
             
-            !isCallbackCalled && each(
-                ids,
-                function ( id ) {
+            if ( !isCallbackCalled ) {
+                each( ids, function ( id ) {
                     if ( !BUILDIN_MODULE[ id ] ) {
                         // 以低优先级触发模式挂载监听器
                         // 循环依赖中能先完成依赖其模块的定义
@@ -958,8 +968,8 @@ var require;
                             )( id, baseId );
                         }
                     }
-                }
-            );
+                } );
+            }
         }
 
         /**
@@ -1220,14 +1230,6 @@ var require;
     var noRequestsIndex;
 
     /**
-     * 以key name为k的逆序排序函数
-     * 
-     * @inner
-     * @type {Function}
-     */
-    var kDescSorter = createDescSorter();
-
-    /**
      * 将key为module id prefix的Object，生成数组形式的索引，并按照长度和字面排序
      * 
      * @inner
@@ -1237,7 +1239,7 @@ var require;
      */
     function createKVSortedIndex( value, allowAsterisk ) {
         var index = kv2List( value, 1, allowAsterisk );
-        index.sort( kDescSorter );
+        index.sort( descSorterByKOrName );
         return index;
     }
 
@@ -1277,10 +1279,11 @@ var require;
                 
                 pkg.location = pkg.location || pkg.name;
                 pkg.main = (pkg.main || 'main').replace(/\.js$/i, '');
+                pkg.reg = createPrefixRegexp( pkg.name );
                 packagesIndex.push( pkg );
             }
         );
-        packagesIndex.sort( createDescSorter( 'name' ) );
+        packagesIndex.sort( descSorterByKOrName );
 
         // create urlArgs index
         urlArgsIndex = createKVSortedIndex( requireConf.urlArgs );
@@ -1313,7 +1316,7 @@ var require;
     function indexRetrieve( value, index, hitBehavior ) {
         each( index, function ( item ) {
             if ( item.reg.test( value ) ) {
-                hitBehavior( item.v, item.k );
+                hitBehavior( item.v, item.k, item );
                 return false;
             }
         } );
@@ -1355,14 +1358,11 @@ var require;
 
         // packages处理和匹配
         if ( !isPathMap ) {
-            each( 
+            indexRetrieve(
+                id,
                 packagesIndex,
-                function ( packageConf ) {
-                    var name = packageConf.name;
-                    if ( createPrefixRegexp( name ).test( id ) ) {
-                        url = url.replace( name, packageConf.location );
-                        return false;
-                    }
+                function ( value, key, item ) {
+                    url = url.replace( item.name, item.location );
                 }
             );
         }
@@ -1609,59 +1609,6 @@ var require;
         return id;
     }
 
-    // #begin-ignore
-    /**
-     * 确定require的模块id不包含相对id。用于global require，提前预防难以跟踪的错误出现
-     * 
-     * @inner
-     * @param {string|Array} requireId require的模块id
-     */
-    function assertNotContainRelativeId( requireId ) {
-        var invalidIds = [];
-
-        /**
-         * 监测模块id是否relative id
-         * 
-         * @inner
-         * @param {string} id 模块id
-         */
-        function monitor( id ) {
-            if ( id.indexOf( '.' ) === 0 ) {
-                invalidIds.push( id );
-            }
-        }
-
-        if ( typeof requireId === 'string' ) {
-            monitor( requireId );
-        }
-        else {
-            each( 
-                requireId, 
-                function ( id ) {
-                    monitor( id );
-                }
-            );
-        }
-
-        // 包含相对id时，直接抛出错误
-        if ( invalidIds.length > 0 ) {
-            throw new Error(
-                '[REQUIRE_FATAL]Relative ID is not allowed in global require: ' 
-                + invalidIds.join( ', ' )
-            );
-        }
-    }
-    // #end-ignore
-
-    /**
-     * 模块id正则
-     * 
-     * @const
-     * @inner
-     * @type {RegExp}
-     */
-    var MODULE_ID_REG = /^[-_a-z0-9\.]+(\/[-_a-z0-9\.]+)*$/i;
-
     /**
      * 解析id，返回带有module和resource属性的Object
      * 
@@ -1672,7 +1619,7 @@ var require;
     function parseId( id ) {
         var segs = id.split( '!' );
 
-        if ( MODULE_ID_REG.test( segs[ 0 ] ) ) {
+        if ( /^[-_a-z0-9\.]+(\/[-_a-z0-9\.]+)*$/i.test( segs[ 0 ] ) ) {
             return {
                 module   : segs[ 0 ],
                 resource : segs[ 1 ]
@@ -1802,29 +1749,23 @@ var require;
     }
 
     /**
-     * 创建数组字符数逆序排序函数
+     * 根据元素的k或name项进行数组字符数逆序的排序函数
      * 
      * @inner
-     * @param {string} property 数组项对象名
-     * @return {Function}
      */
-    function createDescSorter( property ) {
-        property = property || 'k';
+    function descSorterByKOrName( a, b ) {
+        var aValue = a.k || a.name;
+        var bValue = b.k || b.name;
 
-        return function ( a, b ) {
-            var aValue = a[ property ];
-            var bValue = b[ property ];
+        if ( bValue === '*' ) {
+            return -1;
+        }
 
-            if ( bValue === '*' ) {
-                return -1;
-            }
+        if ( aValue === '*' ) {
+            return 1;
+        }
 
-            if ( aValue === '*' ) {
-                return 1;
-            }
-
-            return bValue.length - aValue.length;
-        };
+        return bValue.length - aValue.length;
     }
 
     // 暴露全局对象
