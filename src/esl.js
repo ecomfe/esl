@@ -81,7 +81,7 @@ var require;
         
         // 超时提醒
         var timeout = requireConf.waitSeconds;
-        if ( isArray( requireId ) && timeout ) {
+        if ( timeout && (requireId instanceof Array) ) {
             if ( waitTimeout ) {
                 clearTimeout( waitTimeout );
             }
@@ -218,7 +218,7 @@ var require;
             if ( typeof arg === 'string' ) {
                 id = arg;
             }
-            else if ( isArray( arg ) ) {
+            else if ( arg instanceof Array ) {
                 dependencies = arg;
             }
         }
@@ -939,7 +939,7 @@ var require;
 
         noRequests = noRequests || {};
         var isCallbackCalled = 0;
-        if ( isArray( ids ) ) {
+        if ( ids instanceof Array ) {
             tryFinishRequire();
             
             !isCallbackCalled && each(
@@ -1140,25 +1140,27 @@ var require;
             var newValue = conf[ key ];
             var oldValue = requireConf[ key ];
 
-            if ( key === 'urlArgs' && typeof newValue === 'string' ) {
-                defaultUrlArgs = newValue;
-            }
-            else {
-                // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
-                if ( typeof oldValue === 'object' ) {
-                    if ( isArray( oldValue ) ) {
-                        each( newValue, function ( item ) {
-                            oldValue.push( item );
-                        } );
-                    }
-                    else {
-                        for ( var key in newValue ) {
-                            oldValue[ key ] = newValue[ key ];
-                        }
-                    }
+            if ( newValue ) {
+                if ( key === 'urlArgs' && typeof newValue === 'string' ) {
+                    defaultUrlArgs = newValue;
                 }
                 else {
-                    requireConf[ key ] = newValue;
+                    // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
+                    if ( typeof oldValue === 'object' ) {
+                        if ( oldValue instanceof Array ) {
+                            each( newValue, function ( item ) {
+                                oldValue.push( item );
+                            } );
+                        }
+                        else {
+                            for ( var key in newValue ) {
+                                oldValue[ key ] = newValue[ key ];
+                            }
+                        }
+                    }
+                    else {
+                        requireConf[ key ] = newValue;
+                    }
                 }
             }
         }
@@ -1290,7 +1292,7 @@ var require;
             var mapIndex = {};
             item.v = mapIndex;
 
-            if ( !isArray( value ) ) {
+            if ( !( value instanceof Array ) ) {
                 value = [ value ];
             }
 
@@ -1414,7 +1416,7 @@ var require;
                 
                 return requiredCache[ requireId ];
             }
-            else if ( isArray( requireId ) ) {
+            else if ( requireId instanceof Array ) {
                 // 分析是否有resource，取出pluginModule先
                 var pluginModules = [];
                 each( 
@@ -1783,17 +1785,6 @@ var require;
     }
 
     /**
-     * 判断对象是否数组类型
-     * 
-     * @inner
-     * @param {*} obj 要判断的对象
-     * @return {boolean}
-     */
-    function isArray( obj ) {
-        return obj instanceof Array;
-    }
-
-    /**
      * 循环遍历数组集合
      * 
      * @inner
@@ -1801,7 +1792,7 @@ var require;
      * @param {function(Array,Number):boolean} iterator 遍历函数
      */
     function each( source, iterator ) {
-        if ( isArray( source ) ) {
+        if ( source instanceof Array ) {
             for ( var i = 0, len = source.length; i < len; i++ ) {
                 if ( iterator( source[ i ], i ) === false ) {
                     break;
