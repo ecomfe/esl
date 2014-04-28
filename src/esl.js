@@ -274,7 +274,7 @@ var require;
         else {
             // 纪录到共享变量中，在load或readystatechange中处理
             // 标准浏览器下，使用匿名define时，将进入这个分支
-            wait4PreDefine = {
+            wait4PreDefine[ 0 ] = {
                 deps    : dependencies,
                 factory : factory
             };
@@ -905,30 +905,29 @@ var require;
      * 主要存储匿名方式define的模块
      *
      * @inner
-     * @type {Object}
+     * @type {Array}
      */
-    var wait4PreDefine;
+    var wait4PreDefine = [];
 
     /**
-     * 完成模块预定义
+     * 完成模块预定义，此时处理的模块是匿名define的模块
      *
      * @inner
      */
     function completePreDefine( currentId ) {
-        var preDefine = wait4PreDefine;
-        wait4PreDefine = null;
-
-        // 预定义模块：
-        // 此时处理的模块是匿名define的模块
-        if ( preDefine ) {
+        // HACK: 这里在IE下有个性能陷阱，不能使用任何变量。
+        //       否则貌似会形成变量引用和修改的读写锁，导致wait4PreDefine释放困难
+        each( wait4PreDefine, function ( module ) {
+            //needAnalyse = 1;
             modPreDefine(
                 currentId,
-                preDefine.deps,
-                preDefine.factory
+                module.deps,
+                module.factory
             );
+        } );
 
-            modAnalyse();
-        }
+        wait4PreDefine.length = 0;
+        modAnalyse();
     }
 
     /**
