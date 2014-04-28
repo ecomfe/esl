@@ -334,8 +334,8 @@ function hasModuleRequest( moduleId ) {
 function complexNoRequests_match1( stateTd, callback ) {
     require( ['noRequests/complex/child/cat', 'noRequests/complex/index1' ],
         function (cat, index) {
-            if ( 
-                !hasModuleRequest('noRequests/complex/child/cat') 
+            if (
+                !hasModuleRequest('noRequests/complex/child/cat')
                 && cat.name == 'noRequests/complex/child/cat'
                 && index.name == 'noRequests/complex/index1'
             ) {
@@ -355,8 +355,8 @@ function complexNoRequests_match1( stateTd, callback ) {
 function complexNoRequests_match2( stateTd, callback ) {
     require( ['noRequests/complex/index2', 'noRequests/complex/child/dog'],
         function (index, dog) {
-            if ( 
-                !hasModuleRequest('noRequests/complex/child/dog') 
+            if (
+                !hasModuleRequest('noRequests/complex/child/dog')
                 && dog.name == 'noRequests/complex/child/dog'
                 && index.name == 'noRequests/complex/index2'
             ) {
@@ -376,8 +376,8 @@ function complexNoRequests_match2( stateTd, callback ) {
 function complexNoRequests_noMatch( stateTd, callback ) {
     require( ['noRequests/complex/child/tiger', 'noRequests/complex/index3' ],
         function (tiger, index) {
-            if ( 
-                hasModuleRequest('noRequests/complex/child/tiger') 
+            if (
+                hasModuleRequest('noRequests/complex/child/tiger')
                 && tiger.name == 'noRequests/complex/child/tiger'
                 && index.name == 'noRequests/complex/index3'
             ) {
@@ -397,8 +397,8 @@ function complexNoRequests_noMatch( stateTd, callback ) {
 function complexNoRequests_alone( stateTd, callback ) {
     require( ['noRequests/complex/child/lion', 'noRequests/complex/index3' ],
         function (lion, index) {
-            if ( 
-                hasModuleRequest('noRequests/complex/child/lion') 
+            if (
+                hasModuleRequest('noRequests/complex/child/lion')
                 && lion.name == 'noRequests/complex/child/lion'
             ) {
                 stateTd.className = 'pass';
@@ -417,8 +417,8 @@ function complexNoRequests_alone( stateTd, callback ) {
 function simpleNoRequests( stateTd, callback ) {
     require( ['noRequests/simple/cat', 'noRequests/simple/index' ],
         function (cat, index) {
-            if ( 
-                !hasModuleRequest('noRequests/simple/cat') 
+            if (
+                !hasModuleRequest('noRequests/simple/cat')
                 && cat.name == 'noRequests/simple/cat'
                 && index.name == 'noRequests/simple/index'
             ) {
@@ -438,8 +438,8 @@ function simpleNoRequests( stateTd, callback ) {
 function allNoRequests( stateTd, callback ) {
     require( ['noRequests/all/cat', 'noRequests/all/index' ],
         function (cat, index) {
-            if ( 
-                !hasModuleRequest('noRequests/all/cat') 
+            if (
+                !hasModuleRequest('noRequests/all/cat')
                 && cat.name == 'noRequests/all/cat'
                 && index.name == 'noRequests/all/index'
             ) {
@@ -458,10 +458,10 @@ function allNoRequests( stateTd, callback ) {
 
 
 function checkNormalModule( name, stateTd, module, callback ) {
-    if ( 
-        module 
+    if (
+        module
         && module.name == name
-        && ( typeof module.check != 'function' 
+        && ( typeof module.check != 'function'
              || module.check() )
     ) {
         stateTd.className = 'pass';
@@ -692,8 +692,8 @@ function urlArgs( stateTd, callback ) {
     function checkNext() {
         if ( index < len ) {
             var button = buttons[ index++ ];
-            if ( button.disabled 
-                || ( autostartIgnore 
+            if ( button.disabled
+                || ( autostartIgnore
                      && button.getAttribute( 'data-ignore' ) == autostartIgnore
                     )
             ) {
@@ -707,7 +707,7 @@ function urlArgs( stateTd, callback ) {
             alert( (new Date) - now )
         }
     }
-    
+
     var autostartIgnore;
     if ( /[\?|]autostart(-([a-z]+))?/.test( location.search ) ) {
         var now = new Date;
@@ -717,7 +717,7 @@ function urlArgs( stateTd, callback ) {
             checkNext();
         }, 1);
     }
-    
+
 })();
 
 
