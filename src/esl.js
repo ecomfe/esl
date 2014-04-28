@@ -1,7 +1,7 @@
 /**
  * ESL (Enterprise Standard Loader)
  * Copyright 2013 Baidu Inc. All rights reserved.
- * 
+ *
  * @file Browser端标准加载器，符合AMD规范
  * @author errorrik(errorrik@gmail.com)
  *         Firede(firede@firede.us)
@@ -13,10 +13,10 @@ var require;
 (function ( global ) {
     // "mod"开头的变量或函数为内部模块管理函数
     // 为提高压缩率，不使用function或object包装
-    
+
     /**
      * 模块容器
-     * 
+     *
      * @inner
      * @type {Object}
      */
@@ -25,7 +25,7 @@ var require;
     /**
      * 模块容器副本，不包含resource
      * 在modAnalyse时，从list里遍历比forin更高效
-     * 
+     *
      * @inner
      * @type {Array}
      */
@@ -33,11 +33,11 @@ var require;
 
     /**
      * 自动定义的模块表，key为模块id，value为1
-     * 
+     *
      * 模块define factory是用到时才执行，但是以下几种情况需要自动马上执行：
      * 1. require( [moduleId], callback )
      * 2. plugin module: require( 'plugin!resource' )
-     * 
+     *
      * @inner
      * @type {Object}
      */
@@ -52,7 +52,7 @@ var require;
 
     /**
      * 全局require函数
-     * 
+     *
      * @inner
      * @type {Function}
      */
@@ -61,16 +61,16 @@ var require;
     // #begin-ignore
     /**
      * 超时提醒定时器
-     * 
+     *
      * @inner
      * @type {number}
      */
     var waitTimeout;
     // #end-ignore
-    
+
     /**
      * 加载模块
-     * 
+     *
      * @param {string|Array} requireId 模块id或模块id数组，
      * @param {Function=} callback 加载完成的回调函数
      * @return {*}
@@ -83,7 +83,7 @@ var require;
 
         /**
          * 监测模块id是否relative id
-         * 
+         *
          * @inner
          * @param {string} id 模块id
          */
@@ -97,8 +97,8 @@ var require;
             monitor( requireId );
         }
         else {
-            each( 
-                requireId, 
+            each(
+                requireId,
                 function ( id ) {
                     monitor( id );
                 }
@@ -108,12 +108,12 @@ var require;
         // 包含相对id时，直接抛出错误
         if ( invalidIds.length > 0 ) {
             throw new Error(
-                '[REQUIRE_FATAL]Relative ID is not allowed in global require: ' 
+                '[REQUIRE_FATAL]Relative ID is not allowed in global require: '
                 + invalidIds.join( ', ' )
             );
         }
         // #end assertNotContainRelativeId
-        
+
         // 超时提醒
         var timeout = requireConf.waitSeconds;
         if ( timeout && (requireId instanceof Array) ) {
@@ -129,7 +129,7 @@ var require;
 
     /**
      * 将模块标识转换成相对的url
-     * 
+     *
      * @param {string} id 模块标识
      * @return {string}
      */
@@ -138,7 +138,7 @@ var require;
     // #begin-ignore
     /**
      * 超时提醒函数
-     * 
+     *
      * @inner
      */
     function waitTimeoutNotice() {
@@ -150,7 +150,7 @@ var require;
 
         /**
          * 检查模块的加载错误
-         * 
+         *
          * @inner
          * @param {string} id 模块id
          */
@@ -160,7 +160,7 @@ var require;
             }
 
             visited[ id ] = 1;
-            
+
             if ( !modIs( id, MODULE_PREPARED ) ) {
                 // HACK: 为gzip后体积优化，不做抽取
                 if ( !hangModulesMap[ id ] ) {
@@ -196,7 +196,7 @@ var require;
         }
 
         if ( hangModules.length || missModules.length ) {
-            throw new Error( '[MODULE_TIMEOUT]Hang( ' 
+            throw new Error( '[MODULE_TIMEOUT]Hang( '
                 + ( hangModules.join( ', ' ) || 'none' )
                 + ' ) Miss( '
                 + ( missModules.join( ', ' ) || 'none' )
@@ -205,10 +205,10 @@ var require;
         }
     }
     // #end-ignore
-    
+
     /**
      * 尝试完成模块定义的定时器
-     * 
+     *
      * @inner
      * @type {number}
      */
@@ -216,7 +216,7 @@ var require;
 
     /**
      * 定义模块
-     * 
+     *
      * @param {string=} id 模块标识
      * @param {Array=} dependencies 依赖模块列表
      * @param {Function=} factory 创建模块的工厂方法
@@ -241,7 +241,7 @@ var require;
                 dependencies = arg;
             }
         }
-        
+
         // 出现window不是疏忽
         // esl设计是做为browser端的loader
         // 闭包的global更多意义在于：
@@ -249,10 +249,10 @@ var require;
         var opera = window.opera;
 
         // IE下通过current script的data-require-id获取当前id
-        if ( 
-            !id 
-            && document.attachEvent 
-            && (!(opera && opera.toString() === '[object Opera]')) 
+        if (
+            !id
+            && document.attachEvent
+            && (!(opera && opera.toString() === '[object Opera]'))
         ) {
             var currentScript = getCurrentScript();
             id = currentScript && currentScript.getAttribute('data-require-id');
@@ -282,7 +282,7 @@ var require;
 
     /**
      * 模块配置获取函数
-     * 
+     *
      * @inner
      * @return {Object} 模块配置对象
      */
@@ -297,7 +297,7 @@ var require;
 
     /**
      * 预定义模块
-     * 
+     *
      * @inner
      * @param {string} id 模块标识
      * @param {Array.<string>} dependencies 显式声明的依赖模块列表
@@ -343,13 +343,13 @@ var require;
 
     /**
      * 预分析模块
-     * 
+     *
      * 首先，完成对factory中声明依赖的分析提取
      * 然后，尝试加载"资源加载所需模块"
-     * 
+     *
      * 需要先加载模块的原因是：如果模块不存在，无法进行resourceId normalize化
      * modAnalyse完成后续的依赖分析处理，并进行依赖模块的加载
-     * 
+     *
      * @inner
      * @param {Object} modules 模块对象
      */
@@ -359,7 +359,7 @@ var require;
 
         /**
          * 添加需要请求的模块
-         * 
+         *
          * @inner
          * @param {string} id 模块id
          */
@@ -390,7 +390,7 @@ var require;
                 hardDependsCount = Math.min( factory.length, declareDepsCount );
                 factory.toString()
                     .replace( /(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg, '' )
-                    .replace( /require\(\s*(['"'])([^'"]+)\1\s*\)/g, 
+                    .replace( /require\(\s*(['"'])([^'"]+)\1\s*\)/g,
                         function ( $0, $1, depId ) {
                             deps.push( depId );
                         }
@@ -404,16 +404,16 @@ var require;
 
                 if ( absId && !BUILDIN_MODULE[ absId ] ) {
                     // 如果依赖是一个资源，将其信息添加到module.depRs
-                    // 
+                    //
                     // module.depRs中的项有可能是重复的。
                     // 在这个阶段，加载resource的module可能还未defined，
                     // 导致此时resource id无法被normalize。
-                    // 
+                    //
                     // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
                     // - js!../name.js
                     // - js!a/name.js
                     // - ../../js!../name.js
-                    // 
+                    //
                     // 所以加载资源的module ready时，需要遍历module.depRs进行处理
                     if ( idInfo.resource ) {
                         resInfo = {
@@ -462,14 +462,14 @@ var require;
     /**
      * 等待模块依赖加载完成
      * 加载完成后尝试调用factory完成模块定义
-     * 
+     *
      * @inner
      * @param {Object} module 模块对象
      */
     function modPrepare( id ) {
         var module = modModules[ id ];
         module.invokeFactory = invokeFactory;
-        
+
         // 监视模块的依赖定义完成，并尝试初始化
         each( module.depMs, function ( dep ) {
             var depId = dep.absId;
@@ -491,7 +491,7 @@ var require;
                         nativeRequire( [ res.absId ], null, id );
                     } );
                 }
-                
+
                 updatePreparedState();
             } );
         } );
@@ -500,7 +500,7 @@ var require;
 
         /**
          * 更新模块的prepared状态
-         * 
+         *
          * @inner
          */
         function updatePreparedState() {
@@ -511,7 +511,7 @@ var require;
 
         /**
          * 初始化模块
-         * 
+         *
          * @inner
          */
         function invokeFactory() {
@@ -524,8 +524,8 @@ var require;
             // 拼接factory invoke所需的arguments
             var factoryReady = 1;
             var factoryDeps = [];
-            each( 
-                module.factoryDeps, 
+            each(
+                module.factoryDeps,
                 function ( dep ) {
                     var depId = dep.absId;
 
@@ -542,15 +542,15 @@ var require;
             );
 
             if ( factoryReady ) {
-                var args = modGetModulesExports( 
-                    factoryDeps, 
+                var args = modGetModulesExports(
+                    factoryDeps,
                     {
                         require : module.require,
                         exports : module.exports,
                         module  : module
                     }
                 );
-                
+
                 // 调用factory函数初始化module
                 try {
                     var factory = module.factory;
@@ -561,7 +561,7 @@ var require;
                     if ( exports != null ) {
                         module.exports = exports;
                     }
-                } 
+                }
                 catch ( ex ) {
                     invoking = 0;
                     if ( /^\[MODULE_MISS\]"([^"]+)/.test( ex.message ) ) {
@@ -588,10 +588,10 @@ var require;
     // -------------------
     // 未准备好：
     // 依赖模块链未加载完成。此时继续等待
-    // 
+    //
     // 已经分析完成：
     // 此时所有依赖模块链都已加载完成，但依赖模块未完成定义。可以尝试对循环依赖的模块进行定义
-    // 
+    //
     // 已准备好：
     // 1. 强依赖已经完成定义
     // 2. 非循环依赖已经完成定义
@@ -602,7 +602,7 @@ var require;
 
     /**
      * 检查依赖加载完成的状态
-     * 
+     *
      * @inner
      */
     function modUpdatePreparedState( id ) {
@@ -670,7 +670,7 @@ var require;
 
     /**
      * 判断模块是否完成相应的状态
-     * 
+     *
      * @inner
      * @param {string} id 模块标识
      * @param {number} state 状态码，使用时传入相应的枚举变量，比如`MODULE_DEFINED`
@@ -682,7 +682,7 @@ var require;
 
     /**
      * 尝试执行模块factory函数，进行模块初始化
-     * 
+     *
      * @inner
      * @param {string} id 模块id
      */
@@ -696,7 +696,7 @@ var require;
 
     /**
      * 判断模块是否定义完成，即模块与其依赖全部已定义
-     * 
+     *
      * @inner
      * @param {string} id 模块标识
      * @return {boolean}
@@ -741,7 +741,7 @@ var require;
     /**
      * 根据模块id数组，获取其的exports数组
      * 用于模块初始化的factory参数或require的callback参数生成
-     * 
+     *
      * @inner
      * @param {Array} modules 模块id数组
      * @param {Object} buildinModules 内建模块对象
@@ -749,13 +749,13 @@ var require;
      */
     function modGetModulesExports( modules, buildinModules ) {
         var args = [];
-        each( 
+        each(
             modules,
             function ( id, index ) {
                 args[ index ] =
                     buildinModules[ id ]
                     || modGetModuleExports( id );
-            } 
+            }
         );
 
         return args;
@@ -782,19 +782,19 @@ var require;
 
         visited = visited || {};
         visited[ target ] = 1;
-        
+
         var module = modModules[ target ];
 
         if ( target === source ) {
             return CIRCULAR_DEP_YES;
         }
-        
+
         var deps = module.depMs || [];
         var len = deps.length;
 
         while ( len-- ) {
             var depId = deps[ len ].absId;
-            if ( visited[ depId ] ) { 
+            if ( visited[ depId ] ) {
                 continue;
             }
 
@@ -811,7 +811,7 @@ var require;
 
     /**
      * 模块事件监听器容器
-     * 
+     *
      * @inner
      * @type {Object}
      */
@@ -823,7 +823,7 @@ var require;
 
     /**
      * 添加模块状态变更监听器
-     * 
+     *
      * @inner
      * @param {string} id 模块标识
      * @param {number} state 监听状态
@@ -847,7 +847,7 @@ var require;
     /**
      * 切换模块状态
      * 使用该方法切换模块状态，将触发事件。prepared和defined状态的切换需要用到该方法
-     * 
+     *
      * @inner
      * @param {string} id 模块标识
      * @param {number} state 目标状态
@@ -872,7 +872,7 @@ var require;
 
     /**
      * 获取模块的exports
-     * 
+     *
      * @inner
      * @param {string} id 模块标识
      * @return {*}
@@ -887,7 +887,7 @@ var require;
 
     /**
      * 内建module名称集合
-     * 
+     *
      * @inner
      * @type {Object}
      */
@@ -900,7 +900,7 @@ var require;
     /**
      * 未预定义的模块集合
      * 主要存储匿名方式define的模块
-     * 
+     *
      * @inner
      * @type {Object}
      */
@@ -908,7 +908,7 @@ var require;
 
     /**
      * 完成模块预定义
-     * 
+     *
      * @inner
      */
     function completePreDefine( currentId ) {
@@ -918,9 +918,9 @@ var require;
         // 预定义模块：
         // 此时处理的模块是匿名define的模块
         if ( preDefine ) {
-            modPreDefine( 
-                currentId, 
-                preDefine.deps, 
+            modPreDefine(
+                currentId,
+                preDefine.deps,
                 preDefine.factory
             );
 
@@ -930,14 +930,14 @@ var require;
 
     /**
      * 获取模块
-     * 
+     *
      * @param {string|Array} ids 模块名称或模块名称列表
      * @param {Function=} callback 获取模块完成时的回调函数
      * @return {Object}
      */
     function nativeRequire( ids, callback, baseId, lazyInvoke, noRequests ) {
         // 根据 https://github.com/amdjs/amdjs-api/wiki/require
-        // It MUST throw an error if the module has not 
+        // It MUST throw an error if the module has not
         // already been loaded and evaluated.
         if ( typeof ids === 'string' ) {
             modTryInvokeFactory( ids );
@@ -952,7 +952,7 @@ var require;
         var isCallbackCalled = 0;
         if ( ids instanceof Array ) {
             tryFinishRequire();
-            
+
             if ( !isCallbackCalled ) {
                 each( ids, function ( id ) {
                     if ( !BUILDIN_MODULE[ id ] ) {
@@ -962,7 +962,7 @@ var require;
                         modOn( id, MODULE_DEFINED, tryFinishRequire );
 
                         if ( !noRequests[ id ] ) {
-                            ( id.indexOf( '!' ) > 0 
+                            ( id.indexOf( '!' ) > 0
                                 ? loadResource
                                 : loadModule
                             )( id, baseId );
@@ -975,7 +975,7 @@ var require;
         /**
          * 尝试完成require，调用callback
          * 在模块与其依赖模块都加载完时调用
-         * 
+         *
          * @inner
          */
         function tryFinishRequire() {
@@ -991,8 +991,8 @@ var require;
                 if ( isAllCompleted ) {
                     isCallbackCalled = 1;
 
-                    (typeof callback === 'function') && callback.apply( 
-                        global, 
+                    (typeof callback === 'function') && callback.apply(
+                        global,
                         modGetModulesExports( ids, BUILDIN_MODULE )
                     );
                 }
@@ -1002,7 +1002,7 @@ var require;
 
     /**
      * 正在加载的模块列表
-     * 
+     *
      * @inner
      * @type {Object}
      */
@@ -1010,7 +1010,7 @@ var require;
 
     /**
      * 加载模块
-     * 
+     *
      * @inner
      * @param {string} moduleId 模块标识
      */
@@ -1018,11 +1018,11 @@ var require;
         if ( loadingModules[ moduleId ] || modModules[ moduleId ] ) {
             return;
         }
-        
+
         loadingModules[ moduleId ] = 1;
 
         // 创建script标签
-        // 
+        //
         // 这里不挂接onerror的错误处理
         // 因为高级浏览器在devtool的console面板会报错
         // 再throw一个Error多此一举了
@@ -1040,12 +1040,12 @@ var require;
 
         /**
          * script标签加载完成的事件处理函数
-         * 
+         *
          * @inner
          */
         function loadedListener() {
             var readyState = script.readyState;
-            if ( 
+            if (
                 typeof readyState === 'undefined'
                 || /^(loaded|complete)$/.test( readyState )
             ) {
@@ -1059,7 +1059,7 @@ var require;
 
     /**
      * 加载资源
-     * 
+     *
      * @inner
      * @param {string} pluginAndResource 插件与资源标识
      * @param {string} baseId 当前环境的模块标识
@@ -1078,7 +1078,7 @@ var require;
 
         /**
          * plugin加载完成的回调函数
-         * 
+         *
          * @inner
          * @param {*} value resource的值
          */
@@ -1089,7 +1089,7 @@ var require;
 
         /**
          * 该方法允许plugin使用加载的资源声明模块
-         * 
+         *
          * @param {string} name 模块id
          * @param {string} body 模块声明字符串
          */
@@ -1101,7 +1101,7 @@ var require;
 
         /**
          * 加载资源
-         * 
+         *
          * @inner
          * @param {Object} plugin 用于加载资源的插件模块
          */
@@ -1110,8 +1110,8 @@ var require;
                 ? modModules[ baseId ].require
                 : actualGlobalRequire;
 
-            plugin.load( 
-                idInfo.resource, 
+            plugin.load(
+                idInfo.resource,
                 pluginRequire,
                 pluginOnload,
                 moduleConfigGetter.call( { id: pluginAndResource } )
@@ -1123,11 +1123,11 @@ var require;
 
     /**
      * require配置
-     * 
+     *
      * @inner
      * @type {Object}
      */
-    var requireConf = { 
+    var requireConf = {
         baseUrl     : './',
         paths       : {},
         config      : {},
@@ -1142,7 +1142,7 @@ var require;
 
     /**
      * 配置require
-     * 
+     *
      * @param {Object} conf 配置对象
      */
     require.config = function ( conf ) {
@@ -1174,7 +1174,7 @@ var require;
                 }
             }
         }
-        
+
         createConfIndex();
     };
 
@@ -1183,7 +1183,7 @@ var require;
 
     /**
      * paths内部索引
-     * 
+     *
      * @inner
      * @type {Array}
      */
@@ -1191,7 +1191,7 @@ var require;
 
     /**
      * packages内部索引
-     * 
+     *
      * @inner
      * @type {Array}
      */
@@ -1199,7 +1199,7 @@ var require;
 
     /**
      * mapping内部索引
-     * 
+     *
      * @inner
      * @type {Array}
      */
@@ -1207,7 +1207,7 @@ var require;
 
     /**
      * 默认的urlArgs
-     * 
+     *
      * @inner
      * @type {string}
      */
@@ -1215,7 +1215,7 @@ var require;
 
     /**
      * urlArgs内部索引
-     * 
+     *
      * @inner
      * @type {Array}
      */
@@ -1223,7 +1223,7 @@ var require;
 
     /**
      * noRequests内部索引
-     * 
+     *
      * @inner
      * @type {Array}
      */
@@ -1231,7 +1231,7 @@ var require;
 
     /**
      * 将key为module id prefix的Object，生成数组形式的索引，并按照长度和字面排序
-     * 
+     *
      * @inner
      * @param {Object} value 源值
      * @param {boolean} allowAsterisk 是否允许*号表示匹配所有
@@ -1245,7 +1245,7 @@ var require;
 
     /**
      * 创建配置信息内部索引
-     * 
+     *
      * @inner
      */
     function createConfIndex() {
@@ -1265,7 +1265,7 @@ var require;
 
         // create packages index
         packagesIndex = [];
-        each( 
+        each(
             requireConf.packages,
             function ( packageConf ) {
                 var pkg = packageConf;
@@ -1276,7 +1276,7 @@ var require;
                         main: 'main'
                     };
                 }
-                
+
                 pkg.location = pkg.location || pkg.name;
                 pkg.main = (pkg.main || 'main').replace(/\.js$/i, '');
                 pkg.reg = createPrefixRegexp( pkg.name );
@@ -1307,7 +1307,7 @@ var require;
 
     /**
      * 对配置信息的索引进行检索
-     * 
+     *
      * @inner
      * @param {string} value 要检索的值
      * @param {Array} index 索引对象
@@ -1324,7 +1324,7 @@ var require;
 
     /**
      * 将`模块标识+'.extension'`形式的字符串转换成相对的url
-     * 
+     *
      * @inner
      * @param {string} source 源字符串
      * @return {string}
@@ -1346,7 +1346,7 @@ var require;
             extname = RegExp.$1;
             id = source.replace( extReg, '' );
         }
-        
+
         var url = id;
 
         // paths处理和匹配
@@ -1384,7 +1384,7 @@ var require;
 
         /**
          * 为url附加urlArgs
-         * 
+         *
          * @inner
          * @param {string} args urlArgs串
          */
@@ -1400,7 +1400,7 @@ var require;
 
     /**
      * 创建local require函数
-     * 
+     *
      * @inner
      * @param {number} baseId 当前module id
      * @return {Function}
@@ -1410,21 +1410,21 @@ var require;
         function req( requireId, callback ) {
             if ( typeof requireId === 'string' ) {
                 if ( !requiredCache[ requireId ] ) {
-                    requiredCache[ requireId ] = 
+                    requiredCache[ requireId ] =
                         nativeRequire( normalize( requireId, baseId ) );
                 }
-                
+
                 return requiredCache[ requireId ];
             }
             else if ( requireId instanceof Array ) {
                 // 分析是否有resource，取出pluginModule先
                 var pluginModules = [];
-                each( 
-                    requireId, 
-                    function ( id ) { 
+                each(
+                    requireId,
+                    function ( id ) {
                         var idInfo = parseId( id );
                         if ( idInfo.resource ) {
-                            pluginModules.push( 
+                            pluginModules.push(
                                 normalize( idInfo.module, baseId )
                             );
                         }
@@ -1432,14 +1432,14 @@ var require;
                 );
 
                 // 加载模块
-                nativeRequire( 
-                    pluginModules, 
+                nativeRequire(
+                    pluginModules,
                     function () {
                         var ids = [];
                         var pureModules = [];
 
                         each(
-                            requireId, 
+                            requireId,
                             function ( id ) {
                                 id = normalize( id, baseId );
                                 ids.push( id );
@@ -1452,9 +1452,9 @@ var require;
                             pureModules,
                             function ( id ) {
                                 var meet;
-                                indexRetrieve( 
-                                    id, 
-                                    noRequestsIndex, 
+                                indexRetrieve(
+                                    id,
+                                    noRequestsIndex,
                                     function ( value ) {
                                         meet = value;
                                     }
@@ -1476,7 +1476,7 @@ var require;
                             }
                         );
                         nativeRequire( ids, callback, baseId, 0, noRequestModules );
-                    }, 
+                    },
                     baseId
                 );
             }
@@ -1484,10 +1484,10 @@ var require;
 
         /**
          * 将[module ID] + '.extension'格式的字符串转换成url
-         * 
+         *
          * @inner
          * @param {string} source 符合描述格式的源字符串
-         * @return {string} 
+         * @return {string}
          */
         req.toUrl = function ( id ) {
             return toUrl( normalize( id, baseId ) );
@@ -1498,7 +1498,7 @@ var require;
 
     /**
      * id normalize化
-     * 
+     *
      * @inner
      * @param {string} id 需要normalize的模块标识
      * @param {string} baseId 当前环境的模块标识
@@ -1530,14 +1530,14 @@ var require;
         );
 
         // 根据config中的map配置进行module id mapping
-        indexRetrieve( 
+        indexRetrieve(
             baseId,
-            mappingIdIndex, 
+            mappingIdIndex,
             function ( value ) {
 
-                indexRetrieve( 
-                    moduleId, 
-                    value, 
+                indexRetrieve(
+                    moduleId,
+                    value,
                     function ( mdValue, mdKey ) {
                         moduleId = moduleId.replace( mdKey, mdValue );
                     }
@@ -1545,27 +1545,27 @@ var require;
 
             }
         );
-        
+
         if ( resourceId ) {
             var module = modGetModuleExports( moduleId );
             resourceId = module.normalize
-                ? module.normalize( 
-                    resourceId, 
+                ? module.normalize(
+                    resourceId,
                     function ( resId ) {
                         return normalize( resId, baseId );
                     }
                   )
                 : normalize( resourceId, baseId );
-            
+
             moduleId += '!' + resourceId;
         }
-        
+
         return moduleId;
     }
 
     /**
      * 相对id转换成绝对id
-     * 
+     *
      * @inner
      * @param {string} id 要转换的id
      * @param {string} baseId 当前所在环境id
@@ -1611,7 +1611,7 @@ var require;
 
     /**
      * 解析id，返回带有module和resource属性的Object
-     * 
+     *
      * @inner
      * @param {string} id 标识
      * @return {Object}
@@ -1631,7 +1631,7 @@ var require;
 
     /**
      * 将对象数据转换成数组，数组每项是带有k和v的Object
-     * 
+     *
      * @inner
      * @param {Object} source 对象数据
      * @return {Array.<Object>}
@@ -1641,7 +1641,7 @@ var require;
         for ( var key in source ) {
             if ( source.hasOwnProperty( key ) ) {
                 var item = {
-                    k: key, 
+                    k: key,
                     v: source[ key ]
                 };
                 list.push( item );
@@ -1658,7 +1658,7 @@ var require;
     }
 
     // 感谢requirejs，通过currentlyAddingScript兼容老旧ie
-    // 
+    //
     // For some cache cases in IE 6-8, the script executes before the end
     // of the appendChild execution, so to tie an anonymous define
     // call to the module name (which is stored on the node), hold on
@@ -1669,7 +1669,7 @@ var require;
     /**
      * 获取当前script标签
      * 用于ie下define未指定module id时获取id
-     * 
+     *
      * @inner
      * @return {HTMLDocument}
      */
@@ -1677,8 +1677,8 @@ var require;
         if ( currentlyAddingScript ) {
             return currentlyAddingScript;
         }
-        else if ( 
-            interactiveScript 
+        else if (
+            interactiveScript
             && interactiveScript.readyState === 'interactive'
         ) {
             return interactiveScript;
@@ -1704,7 +1704,7 @@ var require;
 
     /**
      * 向页面中插入script标签
-     * 
+     *
      * @inner
      * @param {HTMLScriptElement} script script标签
      */
@@ -1722,7 +1722,7 @@ var require;
 
     /**
      * 创建id前缀匹配的正则对象
-     * 
+     *
      * @inner
      * @param {string} prefix id前缀
      * @return {RegExp}
@@ -1733,7 +1733,7 @@ var require;
 
     /**
      * 循环遍历数组集合
-     * 
+     *
      * @inner
      * @param {Array} source 数组源
      * @param {function(Array,Number):boolean} iterator 遍历函数
@@ -1750,7 +1750,7 @@ var require;
 
     /**
      * 根据元素的k或name项进行数组字符数逆序的排序函数
-     * 
+     *
      * @inner
      */
     function descSorterByKOrName( a, b ) {
