@@ -7,6 +7,9 @@
  *         Firede(firede@firede.us)
  */
 
+// 有的正则比较长，特别放开一些限制
+/* jshint maxlen: 100 */
+
 var define;
 var require;
 
