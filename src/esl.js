@@ -7,8 +7,8 @@
  *         Firede(firede@firede.us)
  */
 
-// 有的正则比较长，特别放开一些限制
-/* jshint maxlen: 100 */
+// HACK: 特别放开限制 - 有的正则比较长；开头有两个预声明的全局变量
+/* jshint maxlen: 100, unused: false */
 
 var define;
 var require;
@@ -1149,6 +1149,10 @@ var require;
      * @param {Object} conf 配置对象
      */
     require.config = function ( conf ) {
+        function mergeArrayItem( item ) {
+            oldValue.push( item );
+        }
+
         for ( var key in requireConf ) {
             var newValue = conf[ key ];
             var oldValue = requireConf[ key ];
@@ -1161,9 +1165,7 @@ var require;
                     // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
                     if ( typeof oldValue === 'object' ) {
                         if ( oldValue instanceof Array ) {
-                            each( newValue, function ( item ) {
-                                oldValue.push( item );
-                            } );
+                            each( newValue, mergeArrayItem );
                         }
                         else {
                             for ( var key in newValue ) {
