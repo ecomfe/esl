@@ -31,6 +31,18 @@ var require;
      */
     var modModuleList = [];
 
+    /**
+     * 自动定义的模块表，key为模块id，value为1
+     * 
+     * 模块define factory是用到时才执行，但是以下几种情况需要自动马上执行：
+     * 1. require( [moduleId], callback )
+     * 2. plugin module: require( 'plugin!resource' )
+     * 
+     * @inner
+     * @type {Object}
+     */
+    var autoDefineModules = {};
+
     // 模块状态枚举量
     var MODULE_PRE_DEFINED = 1;
     var MODULE_ANALYZED = 2;
@@ -146,6 +158,7 @@ var require;
                 module.depMs,
                 function ( dep ) {
                     var depId = dep.absId;
+
                     if ( !modModules[ depId ] ) {
                         addMissModule( depId );
                     }
@@ -159,7 +172,7 @@ var require;
             );
         }
 
-        for ( var id in modAutoInvoke ) {
+        for ( var id in autoDefineModules ) {
             checkError( id );
         }
 
@@ -638,12 +651,20 @@ var require;
         module.depState = state;
         if ( state >= DEP_ANALYZED ) {
             modStateChange( id, MODULE_PREPARED );
-            if ( modAutoInvoke[ id ] ) {
+            if ( autoDefineModules[ id ] ) {
                 modTryInvokeFactory( id );
             }
         }
     }
 
+    /**
+     * 判断模块是否完成相应的状态
+     * 
+     * @inner
+     * @param {string} id 模块标识
+     * @param {number} state 状态码，使用时传入相应的枚举变量，比如`MODULE_DEFINED`
+     * @return {boolean}
+     */
     function modIs( id, state ) {
         return modModules[ id ] && modModules[ id ].state >= state;
     }
@@ -777,10 +798,26 @@ var require;
         }
     }
 
+    /**
+     * 模块事件监听器容器
+     * 
+     * @inner
+     * @type {Object}
+     */
     var modListeners = {};
+
+    // 预先初始化prepared和defined事件监听器集合
     modListeners[ MODULE_PREPARED ] = {};
     modListeners[ MODULE_DEFINED ] = {};
 
+    /**
+     * 添加模块状态变更监听器
+     * 
+     * @inner
+     * @param {string} id 模块标识
+     * @param {number} state 监听状态
+     * @param {Function} listener 监听函数
+     */
     function modOn( id, state, listener ) {
         if ( modIs( id, state ) ) {
             listener();
@@ -796,6 +833,14 @@ var require;
         listeners.push( listener );
     }
 
+    /**
+     * 切换模块状态
+     * 使用该方法切换模块状态，将触发事件。prepared和defined状态的切换需要用到该方法
+     * 
+     * @inner
+     * @param {string} id 模块标识
+     * @param {number} state 目标状态
+     */
     function modStateChange( id, state ) {
         var listenersBucket = modListeners[ state ];
         var listeners = listenersBucket[ id ] || [];
@@ -813,7 +858,6 @@ var require;
         listeners.length = 0;
         delete listenersBucket[ id ];
     }
-
 
     /**
      * 获取模块的exports
@@ -872,8 +916,6 @@ var require;
             modAnalyse();
         }
     }
-    
-    var modAutoInvoke = {};
 
     /**
      * 获取模块
@@ -887,10 +929,7 @@ var require;
         // It MUST throw an error if the module has not 
         // already been loaded and evaluated.
         if ( typeof ids === 'string' ) {
-            if ( !modIs( ids, MODULE_DEFINED ) ) {
-                modTryInvokeFactory( ids );
-            }
-
+            modTryInvokeFactory( ids );
             if ( !modIs( ids, MODULE_DEFINED ) ) {
                 throw new Error( '[MODULE_MISS]"' + ids + '" is not exists!' );
             }
@@ -909,7 +948,7 @@ var require;
                     if ( !BUILDIN_MODULE[ id ] ) {
                         // 以低优先级触发模式挂载监听器
                         // 循环依赖中能先完成依赖其模块的定义
-                        !lazyInvoke && (modAutoInvoke[ id ] = 1);
+                        !lazyInvoke && (autoDefineModules[ id ] = 1);
                         modOn( id, MODULE_DEFINED, tryFinishRequire );
 
                         if ( !noRequests[ id ] ) {
@@ -1045,7 +1084,7 @@ var require;
          * @param {string} body 模块声明字符串
          */
         pluginOnload.fromText = function ( id, text ) {
-            modAutoInvoke[ id ] = 1;
+            autoDefineModules[ id ] = 1;
             new Function( text )();
             completePreDefine( id );
         };
@@ -1098,33 +1137,29 @@ var require;
      */
     require.config = function ( conf ) {
         for ( var key in requireConf ) {
-            if ( conf.hasOwnProperty( key ) ) {
+            var newValue = conf[ key ];
+            var oldValue = requireConf[ key ];
 
-                var newValue = conf[ key ];
-                var oldValue = requireConf[ key ];
-
-                if ( key === 'urlArgs' && typeof newValue === 'string' ) {
-                    defaultUrlArgs = newValue;
-                }
-                else {
-                    // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
-                    if ( typeof oldValue === 'object' ) {
-                        if ( isArray( oldValue ) ) {
-                            each( newValue, function ( item ) {
-                                oldValue.push( item );
-                            } );
-                        }
-                        else {
-                            for ( var key in newValue ) {
-                                oldValue[ key ] = newValue[ key ];
-                            }
-                        }
+            if ( key === 'urlArgs' && typeof newValue === 'string' ) {
+                defaultUrlArgs = newValue;
+            }
+            else {
+                // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
+                if ( typeof oldValue === 'object' ) {
+                    if ( isArray( oldValue ) ) {
+                        each( newValue, function ( item ) {
+                            oldValue.push( item );
+                        } );
                     }
                     else {
-                        requireConf[ key ] = newValue;
+                        for ( var key in newValue ) {
+                            oldValue[ key ] = newValue[ key ];
+                        }
                     }
                 }
-
+                else {
+                    requireConf[ key ] = newValue;
+                }
             }
         }
         
@@ -1182,8 +1217,22 @@ var require;
      */
     var noRequestsIndex;
 
+    /**
+     * 以key name为k的逆序排序函数
+     * 
+     * @inner
+     * @type {Function}
+     */
     var kDescSorter = createDescSorter();
 
+    /**
+     * 将key为module id prefix的Object，生成数组形式的索引，并按照长度和字面排序
+     * 
+     * @inner
+     * @param {Object} value 源值
+     * @param {boolean} allowAsterisk 是否允许*号表示匹配所有
+     * @return {Array}
+     */
     function createKVSortedIndex( value, allowAsterisk ) {
         var index = kv2List( value, 1, allowAsterisk );
         index.sort( kDescSorter );
@@ -1252,6 +1301,23 @@ var require;
     }
 
     /**
+     * 对配置信息的索引进行检索
+     * 
+     * @inner
+     * @param {string} value 要检索的值
+     * @param {Array} index 索引对象
+     * @param {Function} hitBehavior 索引命中的行为函数
+     */
+    function indexRetrieve( value, index, hitBehavior ) {
+        each( index, function ( item ) {
+            if ( item.reg.test( value ) ) {
+                hitBehavior( item.v, item.k );
+                return false;
+            }
+        } );
+    }
+
+    /**
      * 将`模块标识+'.extension'`形式的字符串转换成相对的url
      * 
      * @inner
@@ -1280,12 +1346,9 @@ var require;
 
         // paths处理和匹配
         var isPathMap;
-        each( pathsIndex, function ( item ) {
-            if ( item.reg.test( id ) ) {
-                url = url.replace( item.k, item.v );
-                isPathMap = 1;
-                return false;
-            }
+        indexRetrieve( id, pathsIndex, function ( value, key ) {
+            url = url.replace( key, value );
+            isPathMap = 1;
         } );
 
         // packages处理和匹配
@@ -1310,8 +1373,12 @@ var require;
         // 附加 .extension 和 query
         url += extname + query;
 
-
+        // urlArgs处理和匹配
         var isUrlArgsAppended;
+        indexRetrieve( id, urlArgsIndex, function ( value ) {
+            appendUrlArgs( value );
+        } );
+        defaultUrlArgs && appendUrlArgs( defaultUrlArgs );
 
         /**
          * 为url附加urlArgs
@@ -1325,15 +1392,6 @@ var require;
                 isUrlArgsAppended = 1;
             }
         }
-        
-        // urlArgs处理和匹配
-        each( urlArgsIndex, function ( item ) {
-            if ( item.reg.test( id ) ) {
-                appendUrlArgs( item.v );
-                return false;
-            }
-        } );
-        defaultUrlArgs && appendUrlArgs( defaultUrlArgs );
 
         return url;
     }
@@ -1392,12 +1450,13 @@ var require;
                             pureModules,
                             function ( id ) {
                                 var meet;
-                                each( noRequestsIndex, function ( item ) {
-                                    if ( item.reg.test( id ) ) {
-                                        meet = item.v;
-                                        return false;
+                                indexRetrieve( 
+                                    id, 
+                                    noRequestsIndex, 
+                                    function ( value ) {
+                                        meet = value;
                                     }
-                                } );
+                                );
 
                                 if ( meet ) {
                                     if ( meet[ '*' ] ) {
@@ -1469,20 +1528,19 @@ var require;
         );
 
         // 根据config中的map配置进行module id mapping
-        each( 
+        indexRetrieve( 
+            baseId,
             mappingIdIndex, 
-            function ( item ) {
-                if ( item.reg.test( baseId ) ) {
+            function ( value ) {
 
-                    each( item.v, function ( mapData ) {
-                        if ( mapData.reg.test( moduleId ) ) {
-                            moduleId = moduleId.replace( mapData.k, mapData.v );
-                            return false;
-                        }
-                    } );
+                indexRetrieve( 
+                    moduleId, 
+                    value, 
+                    function ( mdValue, mdKey ) {
+                        moduleId = moduleId.replace( mdKey, mdValue );
+                    }
+                );
 
-                    return false;
-                }
             }
         );
         
