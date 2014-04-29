@@ -127,7 +127,7 @@ define( function ( require, exports, module ) {
 
 `Interger`
 
-非标准配置项，指定等待的秒数。超过等待时间后，如果有模块未成功加载或初始化，将抛出异常错误信息。
+非AMD标准配置项，指定等待的秒数。超过等待时间后，如果有模块未成功加载或初始化，将抛出 *MODULE_TIMEOUT* 异常错误信息。
 
 ```javascript
 require.config( {
@@ -144,7 +144,7 @@ require( [ 'noexist' ] );
 
 `string` | `Object`
 
-非标准配置项，在模块路径后添加参数字符串。
+非AMD标准配置项，在模块路径后添加参数字符串。
 
 + `string`: 默认参数字符串。
 + `Object`: 为相应模块指定参数字符串。与`paths`、`map`配置项相同，key为前缀匹配。
@@ -170,4 +170,50 @@ require.config( {
 
 更改urlArgs将导致相关模块的缓存全部失效。除非系统升级时对用户更新时效性要求非常高，不建议使用`urlArgs`配置项。
 
+
+### noRequests
+
+`Object`
+
+非AMD标准配置项，指定哪些模块不需要发送网络请求。通常用于在生产环境下，为优化网络连接进行模块合并。
+
++ `key`为`string`。和`map`配置项一样，key的模块id为前缀匹配。
++ `value`为`Array | string`，可指定一个或多个模块id，完整匹配，支持`*`表示所有模块。
+
+在同一个异步require的调用中，如果存在`value`指定的模块，则认为被`key`匹配的模块的声明被合并在`value`指定的模块中，被`key`匹配的模块不发送网络请求。
+
+```javascript
+require.config( {
+    // ...
+
+    noRequests: {
+        'report': 'main',
+        'zrender/shape': 'zrender'
+    }
+} );
+
+// report/daily 将发送请求
+require( 
+    [ 'report/daily' ], 
+    function ( daily ) {
+        // ......
+    }
+);
+
+// report/weekly 将不发送请求
+require( 
+    [ 'report/weekly', 'main' ], 
+    function ( weekly, main ) {
+        // ......
+    }
+);
+
+// zrender/shape/Text 将不发送请求
+require( 
+    [ 'zrender', 'zrender/shape/Text' ], 
+    function ( zrender, TextShape ) {
+        // ......
+    }
+);
+```
 
