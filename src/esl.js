@@ -869,42 +869,42 @@ var require;
      * @param {string} id 模块标识
      * @return {boolean}
      */
-    function modIsCompleted( id, notEntry, visited ) {
-        visited = visited || {};
-        visited[ id ] = 1;
+    // function modIsCompleted( id, notEntry, visited ) {
+    //     visited = visited || {};
+    //     visited[ id ] = 1;
 
-        // 以下条件直接认为该模块未完成:
-        // 1. 入口模块`require([moduleId])`，并且还未完成定义
-        // 2. 非入口模块，并且还未完成准备阶段（依赖信息没准备好）
-        if ( !modIs( id, notEntry ? MODULE_PREPARED : MODULE_DEFINED ) ) {
-            return;
-        }
+    //     // 以下条件直接认为该模块未完成:
+    //     // 1. 入口模块`require([moduleId])`，并且还未完成定义
+    //     // 2. 非入口模块，并且还未完成准备阶段（依赖信息没准备好）
+    //     if ( !modIs( id, notEntry ? MODULE_PREPARED : MODULE_DEFINED ) ) {
+    //         return;
+    //     }
 
-        // 由于上面的判断条件，此处已经能保证module存在
-        var module = modModules[ id ];
+    //     // 由于上面的判断条件，此处已经能保证module存在
+    //     var module = modModules[ id ];
 
-        // 这里是一层cache，避免重复检测
-        if ( module.state === MODULE_COMPLETED ) {
-            return 1;
-        }
+    //     // 这里是一层cache，避免重复检测
+    //     if ( module.state === MODULE_COMPLETED ) {
+    //         return 1;
+    //     }
 
-        var deps = module.depMs || [];
-        var len = deps.length;
+    //     var deps = module.depMs || [];
+    //     var len = deps.length;
 
-        while ( len-- ) {
-            var depId = deps[ len ].absId;
-            if ( visited[ depId ] ) {
-                continue;
-            }
+    //     while ( len-- ) {
+    //         var depId = deps[ len ].absId;
+    //         if ( visited[ depId ] ) {
+    //             continue;
+    //         }
 
-            if( !modIsCompleted( depId, 1, visited ) ) {
-                return;
-            }
-        }
+    //         if( !modIsCompleted( depId, 1, visited ) ) {
+    //             return;
+    //         }
+    //     }
 
-        !notEntry && (module.state = MODULE_COMPLETED);
-        return 1;
-    }
+    //     !notEntry && (module.state = MODULE_COMPLETED);
+    //     return 1;
+    // }
 
     /**
      * 根据模块id数组，获取其的exports数组
@@ -1150,7 +1150,7 @@ var require;
                 var isAllCompleted = 1;
                 each( ids, function ( id ) {
                     if ( !BUILDIN_MODULE[ id ] ) {
-                        return ( isAllCompleted = !!modIsCompleted( id ) );
+                        return ( isAllCompleted = !!modIs( id, MODULE_DEFINED ) );
                     }
                 });
 
