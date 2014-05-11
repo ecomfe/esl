@@ -48,12 +48,20 @@ var require;
      */
     var autoDefineModules = [ [], [] ];
 
+    /**
+     * 自动定义的模块列表存档
+     * 用于超时提示判断和提醒
+     *
+     * @inner
+     * @type {Object}
+     */
+    var autoDefineModulesArchive = {};
+
     // 模块状态枚举量
     var MODULE_PRE_DEFINED = 1;
     var MODULE_ANALYZED = 2;
     var MODULE_PREPARED = 3;
     var MODULE_DEFINED = 4;
-    var MODULE_COMPLETED = 5;
 
     /**
      * 全局require函数
@@ -196,9 +204,9 @@ var require;
             }
         }
 
-        each( autoDefineModules[ 1 ], function ( id ) {
+        for ( var id in autoDefineModulesArchive ) {
             checkError( id, 1 );
-        } );
+        }
 
         if ( hangModules.length || missModules.length ) {
             throw new Error( '[MODULE_TIMEOUT]Hang( '
@@ -437,8 +445,9 @@ var require;
                     moduleInfo = module.depMkv[ absId ];
                     if ( !moduleInfo ) {
                         moduleInfo = {
-                            id       : idInfo.module,
-                            absId    : absId
+                            id      : idInfo.module,
+                            absId   : absId,
+                            hard    : index < hardDependsCount
                         };
                         module.depMs.push( moduleInfo );
                         module.depMkv[ absId ] = moduleInfo;
@@ -501,21 +510,17 @@ var require;
         update( id );
 
         function update( id ) {
-            if ( modIs( id, MODULE_PREPARED ) ) {
-                return true;
+            if ( !modIs( id, MODULE_ANALYZED ) ) {
+                return false;
             }
 
-            if ( visited[ id ] ) {
+            if ( modIs( id, MODULE_PREPARED ) || visited[ id ] ) {
                 return true;
             }
 
             visited[ id ] = 1;
             var module = modModules[ id ];
             var prepared = true;
-
-            if ( !module ) {
-                return false;
-            }
 
             each(
                 module.depMs,
@@ -608,28 +613,43 @@ var require;
             );
 
             if ( factoryReady ) {
-                var args = modGetModulesExports(
-                    factoryDeps,
-                    {
-                        require : module.require,
-                        exports : module.exports,
-                        module  : module
+                try {
+                    var args = modGetModulesExports(
+                        factoryDeps,
+                        {
+                            require : module.require,
+                            exports : module.exports,
+                            module  : module
+                        }
+                    );
+
+                    // 调用factory函数初始化module
+                    var factory = module.factory;
+                    var exports = typeof factory === 'function'
+                        ? factory.apply( global, args )
+                        : factory;
+
+                    if ( exports != null ) {
+                        module.exports = exports;
                     }
-                );
 
-                // 调用factory函数初始化module
-                var factory = module.factory;
-                var exports = typeof factory === 'function'
-                    ? factory.apply( global, args )
-                    : factory;
+                    module.invokeFactory = null;
 
-                if ( exports != null ) {
-                    module.exports = exports;
+                    // 完成define
+                    modDefined( id );
                 }
+                catch ( ex ) {
+                    invoking = 0;
+                    if ( /^\[MODULE_MISS\]"([^"]+)/.test( ex.message ) ) {
+                        // 出错，则说明在factory的运行中，该require的模块是需要的
+                        // 所以把它加入强依赖中
+                        var hardCirclurDep = module.depMkv[ RegExp.$1 ];
+                        hardCirclurDep && (hardCirclurDep.hard = 1);
+                        return;
+                    }
 
-                // 完成define
-                module.invokeFactory = null;
-                modDefined( id );
+                    throw ex;
+                }
             }
         }
     }
@@ -658,50 +678,6 @@ var require;
         if ( module && module.invokeFactory ) {
             module.invokeFactory();
         }
-    }
-
-    /**
-     * 判断模块是否定义完成，即模块与其依赖全部已定义
-     *
-     * @inner
-     * @param {string} id 模块标识
-     * @return {boolean}
-     */
-    function modIsCompleted( id, notEntry, visited ) {
-        visited = visited || {};
-        visited[ id ] = 1;
-
-        // 以下条件直接认为该模块未完成:
-        // 1. 入口模块`require([moduleId])`，并且还未完成定义
-        // 2. 非入口模块，并且还未完成准备阶段（依赖信息没准备好）
-        if ( !modIs( id, notEntry ? MODULE_PREPARED : MODULE_DEFINED ) ) {
-            return;
-        }
-
-        // 由于上面的判断条件，此处已经能保证module存在
-        var module = modModules[ id ];
-
-        // 这里是一层cache，避免重复检测
-        if ( module.state === MODULE_COMPLETED ) {
-            return 1;
-        }
-
-        var deps = module.depMs || [];
-        var len = deps.length;
-
-        while ( len-- ) {
-            var depId = deps[ len ].absId;
-            if ( visited[ depId ] ) {
-                continue;
-            }
-
-            if( !modIsCompleted( depId, 1, visited ) ) {
-                return;
-            }
-        }
-
-        !notEntry && (module.state = MODULE_COMPLETED);
-        return 1;
     }
 
     /**
@@ -868,7 +844,10 @@ var require;
                     if ( !BUILDIN_MODULE[ id ] ) {
                         // 以低优先级触发模式挂载监听器
                         // 循环依赖中能先完成依赖其模块的定义
-                        !lazyInvoke && autoDefineModules[ 1 ].push( id );
+                        if ( !lazyInvoke ) {
+                            autoDefineModules[ 1 ].push( id );
+                            autoDefineModulesArchive[ id ] = 1;
+                        }
                         modAddDefinedListener( id, tryFinishRequire );
 
                         if ( !noRequests[ id ] ) {
@@ -893,7 +872,7 @@ var require;
                 var isAllCompleted = 1;
                 each( ids, function ( id ) {
                     if ( !BUILDIN_MODULE[ id ] ) {
-                        return ( isAllCompleted = !!modIsCompleted( id ) );
+                        return ( isAllCompleted = !!modIs( id, MODULE_DEFINED ) );
                     }
                 });
 
@@ -1005,6 +984,7 @@ var require;
          */
         pluginOnload.fromText = function ( id, text ) {
             autoDefineModules[ 1 ].push( id );
+            autoDefineModulesArchive[ id ] = 1;
             new Function( text )();
             completePreDefine( id );
         };
@@ -1682,4 +1662,5 @@ var require;
     // 暴露全局对象
     global.define = define;
     global.require = require;
+    global.modModules = modModuleList;
 })( this );
