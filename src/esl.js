@@ -466,8 +466,8 @@ var require;
                 }
             } );
 
-            modInitFactoryInvoker( module.id );
             module.state = MODULE_ANALYZED;
+            modInitFactoryInvoker( module.id );
         });
 
         modAutoInvoke();
