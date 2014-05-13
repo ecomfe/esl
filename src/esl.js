@@ -35,27 +35,17 @@ var require;
     var modModuleList = [];
 
     /**
-     * 自动定义的模块列表
-     * 0为define中require resource的plugin module
-     * 1为async require中的模块
+     * 自动定义的模块表
      *
      * 模块define factory是用到时才执行，但是以下几种情况需要自动马上执行：
      * 1. require( [moduleId], callback )
      * 2. plugin module: require( 'plugin!resource' )
      *
      * @inner
-     * @type {Array}
-     */
-    var autoDefineModules = [ [], [] ];
-
-    /**
-     * 自动定义的模块列表存档
-     * 用于超时提示判断和提醒
-     *
-     * @inner
      * @type {Object}
      */
-    var autoDefineModulesArchive = {};
+    var autoDefineModules = {};
+
 
     // 模块状态枚举量
     var MODULE_PRE_DEFINED = 1;
@@ -204,7 +194,7 @@ var require;
             }
         }
 
-        for ( var id in autoDefineModulesArchive ) {
+        for ( var id in autoDefineModules ) {
             checkError( id, 1 );
         }
 
@@ -436,7 +426,7 @@ var require;
                             module   : absId,
                             resource : idInfo.resource
                         };
-                        autoDefineModules[ 0 ].push( absId );
+                        autoDefineModules[ absId ] = 1;
                         module.depPMs.push( absId );
                         module.depRs.push( resInfo );
                     }
@@ -471,7 +461,7 @@ var require;
         });
 
         modAutoInvoke();
-        nativeRequire( requireModules, null, null, 1 );
+        nativeRequire( requireModules, null, null );
     }
 
     /**
@@ -480,23 +470,10 @@ var require;
      * @inner
      */
     function modAutoInvoke() {
-        each( autoDefineModules, function ( levelModules ) {
-            each( levelModules, function ( id ) {
-                modUpdatePreparedState( id );
-                modTryInvokeFactory( id );
-            } );
-        } );
-
-        setTimeout( function () {
-            each( autoDefineModules, function ( levelModules ) {
-                var len = levelModules.length;
-                while( len-- ) {
-                    if ( modIs( levelModules[ len ], MODULE_DEFINED ) ) {
-                        levelModules.splice( len, 1 );
-                    }
-                }
-            } );
-        }, 1 );
+        for ( var id in autoDefineModules ) {
+            modUpdatePreparedState( id );
+            modTryInvokeFactory( id );
+        }
     }
 
     /**
@@ -513,7 +490,6 @@ var require;
             if ( !modIs( id, MODULE_ANALYZED ) ) {
                 return false;
             }
-
             if ( modIs( id, MODULE_PREPARED ) || visited[ id ] ) {
                 return true;
             }
@@ -533,7 +509,7 @@ var require;
             prepared && each(
                 module.depRs,
                 function ( dep ) {
-                    prepared = dep.absId && modIs( dep.absId, MODULE_DEFINED );
+                    prepared = !!(dep.absId && modIs( dep.absId, MODULE_DEFINED ));
                     return prepared;
                 }
             );
@@ -559,26 +535,14 @@ var require;
         module.invokeFactory = invokeFactory;
         each( module.depPMs, function ( pluginModuleId ) {
             modAddDefinedListener( pluginModuleId, function () {
-                var module = modModules[ id ];
-
                 each( module.depRs, function ( res ) {
                     if ( !res.absId && res.module === pluginModuleId ) {
                         res.absId = normalize( res.id, id );
-                        nativeRequire( [ res.absId ], updateStateAndDefine );
+                        nativeRequire( [ res.absId ], modAutoInvoke );
                     }
                 } );
             } );
         } );
-
-        /**
-         * 尝试更新prepared状态并初始化模块
-         *
-         *  @inner
-         */
-        function updateStateAndDefine() {
-            modUpdatePreparedState( id );
-            modTryInvokeFactory( id );
-        }
 
         /**
          * 初始化模块
@@ -634,9 +598,6 @@ var require;
                     }
 
                     module.invokeFactory = null;
-
-                    // 完成define
-                    modDefined( id );
                 }
                 catch ( ex ) {
                     invoking = 0;
@@ -650,6 +611,10 @@ var require;
 
                     throw ex;
                 }
+
+                // 完成define
+                // 不放在try里，避免后续的运行错误被这里吞掉
+                modDefined( id );
             }
         }
     }
@@ -821,7 +786,7 @@ var require;
      * @param {Function=} callback 获取模块完成时的回调函数
      * @return {Object}
      */
-    function nativeRequire( ids, callback, baseId, lazyInvoke, noRequests ) {
+    function nativeRequire( ids, callback, baseId, noRequests ) {
         // 根据 https://github.com/amdjs/amdjs-api/wiki/require
         // It MUST throw an error if the module has not
         // already been loaded and evaluated.
@@ -837,17 +802,13 @@ var require;
         noRequests = noRequests || {};
         var isCallbackCalled = 0;
         if ( ids instanceof Array ) {
+            modAutoInvoke();
             tryFinishRequire();
 
             if ( !isCallbackCalled ) {
                 each( ids, function ( id ) {
-                    if ( !BUILDIN_MODULE[ id ] ) {
-                        // 以低优先级触发模式挂载监听器
-                        // 循环依赖中能先完成依赖其模块的定义
-                        if ( !lazyInvoke ) {
-                            autoDefineModules[ 1 ].push( id );
-                            autoDefineModulesArchive[ id ] = 1;
-                        }
+
+                    if ( !(BUILDIN_MODULE[ id ] || modIs( id, MODULE_DEFINED )) ) {
                         modAddDefinedListener( id, tryFinishRequire );
 
                         if ( !noRequests[ id ] ) {
@@ -857,6 +818,7 @@ var require;
                             )( id, baseId );
                         }
                     }
+
                 } );
             }
         }
@@ -983,8 +945,7 @@ var require;
          * @param {string} body 模块声明字符串
          */
         pluginOnload.fromText = function ( id, text ) {
-            autoDefineModules[ 1 ].push( id );
-            autoDefineModulesArchive[ id ] = 1;
+            autoDefineModules[ id ] = 1;
             new Function( text )();
             completePreDefine( id );
         };
@@ -1008,7 +969,7 @@ var require;
             );
         }
 
-        nativeRequire( [ idInfo.module ], load );
+        load( modGetModuleExports( idInfo.module ) );
     }
 
     /**
@@ -1311,64 +1272,69 @@ var require;
             else if ( requireId instanceof Array ) {
                 // 分析是否有resource，取出pluginModule先
                 var pluginModules = [];
+                var pureModules = [];
+                var normalizedIds = [];
+
                 each(
                     requireId,
-                    function ( id ) {
+                    function ( id, i ) {
                         var idInfo = parseId( id );
+                        var absId = normalize( idInfo.module, baseId );
+                        pureModules.push( absId );
+                        autoDefineModules[ absId ] = 1;
                         if ( idInfo.resource ) {
-                            var absId = normalize( idInfo.module, baseId );
                             pluginModules.push( absId );
+                            normalizedIds[ i ] = null;
+                        }
+                        else {
+                            normalizedIds[ i ] = absId;
+                        }
+                    }
+                );
+
+                var noRequestModules = {};
+                each(
+                    pureModules,
+                    function ( id ) {
+                        var meet;
+                        indexRetrieve(
+                            id,
+                            noRequestsIndex,
+                            function ( value ) {
+                                meet = value;
+                            }
+                        );
+
+                        if ( meet ) {
+                            if ( meet[ '*' ] ) {
+                                noRequestModules[ id ] = 1;
+                            }
+                            else {
+                                each( pureModules, function ( meetId ) {
+                                    if ( meet[ meetId ] ) {
+                                        noRequestModules[ id ] = 1;
+                                        return false;
+                                    }
+                                } );
+                            }
                         }
                     }
                 );
 
                 // 加载模块
                 nativeRequire(
-                    pluginModules,
+                    pureModules,
                     function () {
-                        var ids = [];
-                        var pureModules = [];
-
-                        each(
-                            requireId,
-                            function ( id ) {
-                                id = normalize( id, baseId );
-                                ids.push( id );
-                                id.indexOf( '!' ) < 0 && pureModules.push( id );
+                        each( normalizedIds, function ( id, i ) {
+                            if ( id == null ) {
+                                normalizedIds[ i ] = normalize( requireId[ i ], baseId );
                             }
-                        );
+                        } );
 
-                        var noRequestModules = {};
-                        each(
-                            pureModules,
-                            function ( id ) {
-                                var meet;
-                                indexRetrieve(
-                                    id,
-                                    noRequestsIndex,
-                                    function ( value ) {
-                                        meet = value;
-                                    }
-                                );
-
-                                if ( meet ) {
-                                    if ( meet[ '*' ] ) {
-                                        noRequestModules[ id ] = 1;
-                                    }
-                                    else {
-                                        each( pureModules, function ( meetId ) {
-                                            if ( meet[ meetId ] ) {
-                                                noRequestModules[ id ] = 1;
-                                                return false;
-                                            }
-                                        } );
-                                    }
-                                }
-                            }
-                        );
-                        nativeRequire( ids, callback, baseId, 0, noRequestModules );
+                        nativeRequire( normalizedIds, callback, baseId );
                     },
-                    baseId
+                    baseId,
+                    noRequestModules
                 );
             }
         }
@@ -1662,5 +1628,4 @@ var require;
     // 暴露全局对象
     global.define = define;
     global.require = require;
-    global.modModules = modModuleList;
 })( this );
