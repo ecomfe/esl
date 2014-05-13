@@ -461,7 +461,7 @@ var require;
         });
 
         modAutoInvoke();
-        nativeRequire( requireModules, null, null );
+        nativeRequire( requireModules );
     }
 
     /**
