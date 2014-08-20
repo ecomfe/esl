@@ -198,7 +198,8 @@ var require;
         }
 
         if (hangModules.length || missModules.length) {
-            throw new Error('[MODULE_TIMEOUT]Hang( '
+            throw new Error(
+                '[MODULE_TIMEOUT]Hang( '
                 + (hangModules.join(', ') || 'none')
                 + ' ) Miss( '
                 + (missModules.join(', ') || 'none')
@@ -223,25 +224,25 @@ var require;
      * @param {Array=} dependencies 依赖模块列表
      * @param {Function=} factory 创建模块的工厂方法
      */
-    function define() {
-        var argsLen = arguments.length;
-        if (!argsLen) {
+    function define(id, dependencies, factory) {
+        if (!arguments.length) {
             return;
         }
 
-        var id;
-        var dependencies;
-        var factory = arguments[--argsLen];
-
-        while (argsLen--) {
-            var arg = arguments[argsLen];
-
-            if (typeof arg === 'string') {
-                id = arg;
+        if (typeof id !== 'string') {
+            if (id instanceof Array) {
+                factory = dependencies;
+                dependencies = id;
             }
-            else if (arg instanceof Array) {
-                dependencies = arg;
+            else {
+                factory = id;
+                dependencies = null;
             }
+            id = null;
+        }
+        else if (!(dependencies instanceof Array)) {
+            factory = dependencies;
+            dependencies = null;
         }
 
         // 出现window不是疏忽
