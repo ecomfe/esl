@@ -7,9 +7,10 @@
  *         Firede(firede@firede.us)
  */
 
-
+/* jshint ignore:start */
 var define;
 var require;
+/* jshint ignore:end */
 
 (function (global) {
     // "mod"开头的变量或函数为内部模块管理函数
@@ -89,13 +90,13 @@ var require;
          * @param {string} id 模块id
          */
         function monitor(id) {
-            if (id.indexOf( '.' ) === 0) {
-                invalidIds.push( id );
+            if (id.indexOf('.') === 0) {
+                invalidIds.push(id);
             }
         }
 
         if (typeof requireId === 'string') {
-            monitor( requireId );
+            monitor(requireId);
         }
         else {
             each(
@@ -504,6 +505,7 @@ var require;
             );
 
             // 判断resource是否加载完成。如果resource未加载完成，则认为未准备好
+            /* jshint ignore:start */
             prepared && each(
                 module.depRs,
                 function (dep) {
@@ -511,6 +513,7 @@ var require;
                     return prepared;
                 }
             );
+            /* jshint ignore:end */
 
             if (prepared) {
                 module.state = MODULE_PREPARED;
@@ -543,7 +546,7 @@ var require;
                                 res.absId = normalize(res.id, id);
                                 nativeRequire([ res.absId ], modAutoInvoke);
                             }
-                        } );
+                        });
                     }
                 );
 
@@ -942,6 +945,7 @@ var require;
             modDefined(pluginAndResource);
         }
 
+        /* jshint ignore:start */
         /**
          * 该方法允许plugin使用加载的资源声明模块
          *
@@ -953,6 +957,7 @@ var require;
             new Function(text)();
             completePreDefine(id);
         };
+        /* jshint ignore:end */
 
         /**
          * 加载资源
@@ -1330,11 +1335,13 @@ var require;
                 nativeRequire(
                     pureModules,
                     function () {
+                        /* jshint ignore:start */
                         each(normalizedIds, function (id, i) {
                             if (id == null) {
                                 normalizedIds[i] = normalize(requireId[i], baseId);
                             }
-                        } );
+                        });
+                        /* jshint ignore:end */
 
                         nativeRequire(normalizedIds, callback, baseId);
                     },
