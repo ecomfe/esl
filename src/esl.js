@@ -130,6 +130,13 @@ var require;
     }
 
     /**
+     * 版本号
+     *
+     * @type {string}
+     */
+    require.version = '1.8.4';
+
+    /**
      * 将模块标识转换成相对的url
      *
      * @param {string} id 模块标识
@@ -1648,6 +1655,6 @@ var require;
     }
 
     // 暴露全局对象
-    global.define = define;
-    global.require = require;
+    (global.define == null) && (global.define = define);
+    (global.require == null) && (global.require = require);
 })(this);
