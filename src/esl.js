@@ -225,24 +225,27 @@ var require;
      * @param {Function=} factory 创建模块的工厂方法
      */
     function define(id, dependencies, factory) {
-        if (!arguments.length) {
-            return;
-        }
-
-        if (typeof id !== 'string') {
-            if (id instanceof Array) {
-                factory = dependencies;
-                dependencies = id;
+        // define(factory)
+        // define(dependencies, factory)
+        // define(id, factory)
+        // define(id, dependencies, factory)
+        if (factory == null) {
+            if (dependencies == null) {
+                factory = id;
+                id = null;
             }
             else {
-                factory = id;
+                factory = dependencies;
                 dependencies = null;
+                if (id instanceof Array) {
+                    dependencies = id;
+                    id = null;
+                }
             }
-            id = null;
         }
-        else if (!(dependencies instanceof Array)) {
-            factory = dependencies;
-            dependencies = null;
+
+        if (factory == null) {
+            return;
         }
 
         // 出现window不是疏忽
