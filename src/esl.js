@@ -1020,7 +1020,7 @@ var require;
 
             if (newValue) {
                 if (key === 'urlArgs' && typeof newValue === 'string') {
-                    defaultUrlArgs = newValue;
+                    requireConf.urlArgs['*'] = newValue;
                 }
                 else {
                     // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
@@ -1070,14 +1070,6 @@ var require;
      * @type {Array}
      */
     var mappingIdIndex;
-
-    /**
-     * 默认的urlArgs
-     *
-     * @inner
-     * @type {string}
-     */
-    var defaultUrlArgs;
 
     /**
      * urlArgs内部索引
@@ -1152,7 +1144,7 @@ var require;
         packagesIndex.sort(descSorterByKOrName);
 
         // create urlArgs index
-        urlArgsIndex = createKVSortedIndex(requireConf.urlArgs);
+        urlArgsIndex = createKVSortedIndex(requireConf.urlArgs, 1);
 
         // create noRequests index
         noRequestsIndex = createKVSortedIndex(requireConf.noRequests);
@@ -1224,13 +1216,9 @@ var require;
 
         // packages处理和匹配
         if (!isPathMap) {
-            indexRetrieve(
-                id,
-                packagesIndex,
-                function (value, key, item) {
-                    url = url.replace(item.name, item.location);
-                }
-            );
+            indexRetrieve(id, packagesIndex, function (value, key, item) {
+                url = url.replace(item.name, item.location);
+            });
         }
 
         // 相对路径时，附加baseUrl
@@ -1242,24 +1230,9 @@ var require;
         url += extname + query;
 
         // urlArgs处理和匹配
-        var isUrlArgsAppended;
         indexRetrieve(id, urlArgsIndex, function (value) {
-            appendUrlArgs(value);
+            url += (url.indexOf('?') > 0 ? '&' : '?') + value;
         });
-        defaultUrlArgs && appendUrlArgs(defaultUrlArgs);
-
-        /**
-         * 为url附加urlArgs
-         *
-         * @inner
-         * @param {string} args urlArgs串
-         */
-        function appendUrlArgs(args) {
-            if (!isUrlArgsAppended) {
-                url += (url.indexOf('?') > 0 ? '&' : '?') + args;
-                isUrlArgsAppended = 1;
-            }
-        }
 
         return url;
     }
@@ -1282,7 +1255,7 @@ var require;
 
                 return requiredCache[ requireId ];
             }
-            else if ( requireId instanceof Array ) {
+            else if (requireId instanceof Array) {
                 // 分析是否有resource，取出pluginModule先
                 var pluginModules = [];
                 var pureModules = [];
@@ -1290,7 +1263,7 @@ var require;
 
                 each(
                     requireId,
-                    function ( id, i ) {
+                    function (id, i) {
                         var idInfo = parseId(id);
                         var absId = normalize(idInfo.module, baseId);
                         pureModules.push(absId);
