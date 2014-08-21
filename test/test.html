@@ -327,9 +327,58 @@ input { font-size: 12px; width: 210px;}
         <td><input value="complexNoRequests_alone" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <th colspan="2" align="left">Read Conf:</th>
+    </tr>
+    <tr>
+        <td><input value="readConfig" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 </table>
 
 <script>
+
+function readConfig( stateTd, callback ) {
+    var conf = require.config();
+    var ok = conf.baseUrl == './'
+        && conf.paths.css == '../src/css'
+        && conf.paths.abspath == '/test/pathstest'
+        && conf.map.usecjs.simple == 'cjs/simple'
+        && conf.map['usecjs/change2amd'].simple == 'amd/simple'
+        && conf.packages[0] == 'pkgclassic/1.0'
+        && conf.packages[1].name == 'pkgsetmain'
+        && conf.config['moduleconf/cat'].desc == 'cat'
+        && conf.urlArgs['*'] == 'urlArgs'
+        && conf.urlArgs['amd/simpleDependency'] == 'amdsd';
+
+    if (ok) {
+        conf = require.config({
+            paths: {
+                'justfortest': 'justfortestpath'
+            }
+        });
+        ok = conf.baseUrl == './'
+            && conf.paths.css == '../src/css'
+            && conf.paths.abspath == '/test/pathstest'
+            && conf.map.usecjs.simple == 'cjs/simple'
+            && conf.map['usecjs/change2amd'].simple == 'amd/simple'
+            && conf.packages[0] == 'pkgclassic/1.0'
+            && conf.packages[1].name == 'pkgsetmain'
+            && conf.config['moduleconf/cat'].desc == 'cat'
+            && conf.urlArgs['*'] == 'urlArgs'
+            && conf.urlArgs['amd/simpleDependency'] == 'amdsd'
+            && conf.paths.justfortest == 'justfortestpath';
+    }
+
+    if (ok) {
+        stateTd.className = 'pass';
+    }
+    else {
+        stateTd.className = 'fail';
+    }
+    callback();
+}
+
 function hasModuleRequest( moduleId ) {
     var scripts = document.getElementsByTagName( 'script' );
     var len = scripts.length;
