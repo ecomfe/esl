@@ -1014,35 +1014,68 @@ var require;
             oldValue.push(item);
         }
 
-        for (var key in requireConf) {
-            var newValue = conf[key];
-            var oldValue = requireConf[key];
+        if (conf) {
+            for (var key in requireConf) {
+                var newValue = conf[key];
+                var oldValue = requireConf[key];
 
-            if (newValue) {
-                if (key === 'urlArgs' && typeof newValue === 'string') {
-                    requireConf.urlArgs['*'] = newValue;
-                }
-                else {
-                    // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
-                    if (typeof oldValue === 'object') {
-                        if (oldValue instanceof Array) {
-                            each(newValue, mergeArrayItem);
-                        }
-                        else {
-                            for (var key in newValue) {
-                                oldValue[key] = newValue[key];
-                            }
-                        }
+                if (newValue) {
+                    if (key === 'urlArgs' && typeof newValue === 'string') {
+                        requireConf.urlArgs['*'] = newValue;
                     }
                     else {
-                        requireConf[key] = newValue;
+                        // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
+                        if (typeof oldValue === 'object') {
+                            if (oldValue instanceof Array) {
+                                each(newValue, mergeArrayItem);
+                            }
+                            else {
+                                for (var key in newValue) {
+                                    oldValue[key] = newValue[key];
+                                }
+                            }
+                        }
+                        else {
+                            requireConf[key] = newValue;
+                        }
                     }
+                }
+            }
+
+            createConfIndex();
+        }
+
+        // 配置信息对象clone返回，避免返回结果对象被用户程序修改可能导致的问题
+        return clone(requireConf);
+    };
+
+    /**
+     * 对象克隆，支持raw type, Array, raw Object
+     *
+     * @inner
+     * @param {*} source 要克隆的对象
+     * @return {*}
+     */
+    function clone(source) {
+        var result = source;
+
+        if (source instanceof Array) {
+            result = [];
+            each(source, function (item, i) {
+                result[i] = clone(item);
+            });
+        }
+        else if (typeof source === 'object') {
+            result = {};
+            for (var key in source) {
+                if (source.hasOwnProperty(key)) {
+                    result[key] = clone(source[key]);
                 }
             }
         }
 
-        createConfIndex();
-    };
+        return result;
+    }
 
     // 初始化时需要创建配置索引
     createConfIndex();
