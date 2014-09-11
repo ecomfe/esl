@@ -10,6 +10,7 @@
 /* jshint ignore:start */
 var define;
 var require;
+var esl;
 /* jshint ignore:end */
 
 (function (global) {
@@ -1660,10 +1661,32 @@ var require;
     }
 
     // 暴露全局对象
+    //
+    // 如果define已经存在，说明已经有一个amd loader了，避免覆盖
+    // 这里有一个假设，只有amd loader会用define，但是，任何形式的loader可能会用require
+    //
+    // 使用 `global.` 的原因是，让被运行在第三方页面的代码，也能方便的用loader
+    // 第三方页面很可能存在一个loader，就算不存在，可能未来也会有。所以不能在全局用loader
+    // 这时，把esl的代码拿过去，只改全局IIFE最后的 `this`，就能获得namespace上的loader
+    //
+    //  // 声明自己的namespace
+    //  var selfnamespace = {};
+    //
+    //  // 这里是esl的代码
+    //  (function (global){
+    //      // esl的实现
+    //  })(selfnamespace); // 改这里的this
+    //
     if (!global.define) {
         global.define = define;
-    }
-    if (!global.require) {
-        global.require = require;
+
+        // 可能碰到其他形式的loader，所以，不要覆盖人家
+        if (!global.require) {
+            global.require = require;
+        }
+
+        // 如果存在其他版本的esl，在define那里就判断过了，不会进入这个分支
+        // 所以这里就不判断了，直接写
+        global.esl = require;
     }
 })(this);
