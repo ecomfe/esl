@@ -11,8 +11,9 @@ ESL is a browser-only, amd-compliant module loader. In modern web applications, 
 - 具有`更小的体积` (Smaller) 
 - 具有`更高的性能` (Higher performance)
 - 不支持在`非浏览器端`使用 (Browser only)
-- 尚未支持以下配置项：`shim` (`shim` is not supported)
+- 依赖模块`用时定义` (Lazy define)
 - 支持`noRequests`指定无需请求的模块 (noRequests is supported)
+- 尚未支持以下配置项：`shim` (`shim` is not supported)
 
 ### ESL的配置项 (CONFIGURATION OPTIONS)
 
@@ -26,13 +27,13 @@ See [Configuration Options](doc/config.md)
 
 ```html
 <!-- normal -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-2/esl.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-4/esl.js"></script>
 
 <!-- min -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-2/esl.min.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-4/esl.min.js"></script>
 
 <!-- source -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-2/esl.source.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-4/esl.source.js"></script>
 ```
 
 [过往版本](CDN.md)
@@ -43,9 +44,9 @@ See [Configuration Options](doc/config.md)
 
 `uglifyjs -mc + gzip`
 
-- `esl 1.8.2 normal` 3487 bytes
-- `esl 1.8.2 min` 3208 bytes
-- `requirejs 2.1.11` 6289 bytes
+- `esl 1.8.4 normal` 3.4k
+- `esl 1.8.4 min` 3.2k
+- `requirejs 2.1.14` 6.1k
 
 
 ### 性能对比 (PERFORMANCE)

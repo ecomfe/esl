@@ -1,3 +1,12 @@
+1.8.4
+-------
+
++ 环境安全优化：当前页面中已经存在其他loader的define和require时，不进行覆盖
++ 性能优化：define方法不通过arguments读取参数
++ 代码优化：对urlArgs的匹配逻辑进行了优化
++ 增加loader和版本信息标识
++ 增加自己的global require：esl
+
 1.8.2
 -------
 
