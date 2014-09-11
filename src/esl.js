@@ -137,6 +137,13 @@ var require;
     require.version = '1.8.4';
 
     /**
+     * loader名称
+     *
+     * @type {string}
+     */
+    require.loader = 'esl';
+
+    /**
      * 将模块标识转换成相对的url
      *
      * @param {string} id 模块标识
@@ -415,7 +422,8 @@ var require;
             each(deps, function (depId, index) {
                 var idInfo = parseId(depId);
                 var absId = normalize(idInfo.module, module.id);
-                var moduleInfo, resInfo;
+                var moduleInfo;
+                var resInfo;
 
                 if (absId && !BUILDIN_MODULE[absId]) {
                     // 如果依赖是一个资源，将其信息添加到module.depRs
@@ -464,7 +472,7 @@ var require;
                 if (index < hardDependsCount) {
                     module.factoryDeps.push(resInfo || moduleInfo);
                 }
-            } );
+            });
 
             module.state = MODULE_ANALYZED;
             modInitFactoryInvoker(module.id);
@@ -785,7 +793,6 @@ var require;
         // HACK: 这里在IE下有个性能陷阱，不能使用任何变量。
         //       否则貌似会形成变量引用和修改的读写锁，导致wait4PreDefine释放困难
         each(wait4PreDefine, function (module) {
-            //needAnalyse = 1;
             modPreDefine(
                 currentId,
                 module.deps,
@@ -960,8 +967,8 @@ var require;
         /**
          * 该方法允许plugin使用加载的资源声明模块
          *
-         * @param {string} name 模块id
-         * @param {string} body 模块声明字符串
+         * @param {string} id 模块id
+         * @param {string} text 模块声明字符串
          */
         pluginOnload.fromText = function (id, text) {
             autoDefineModules[id] = 1;
@@ -1032,14 +1039,12 @@ var require;
                     }
                     else {
                         // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
-                        if (typeof oldValue === 'object') {
-                            if (oldValue instanceof Array) {
-                                each(newValue, mergeArrayItem);
-                            }
-                            else {
-                                for (var key in newValue) {
-                                    oldValue[key] = newValue[key];
-                                }
+                        if (oldValue instanceof Array) {
+                            each(newValue, mergeArrayItem);
+                        }
+                        else if (typeof oldValue === 'object') {
+                            for (var key in newValue) {
+                                oldValue[key] = newValue[key];
                             }
                         }
                         else {
@@ -1188,7 +1193,7 @@ var require;
 
         // create noRequests index
         noRequestsIndex = createKVSortedIndex(requireConf.noRequests);
-        each( noRequestsIndex, function (item) {
+        each(noRequestsIndex, function (item) {
             var value = item.v;
             var mapIndex = {};
             item.v = mapIndex;
@@ -1372,7 +1377,7 @@ var require;
          * 将[module ID] + '.extension'格式的字符串转换成url
          *
          * @inner
-         * @param {string} source 符合描述格式的源字符串
+         * @param {string} id 符合描述格式的源字符串
          * @return {string}
          */
         req.toUrl = function (id) {
@@ -1655,6 +1660,10 @@ var require;
     }
 
     // 暴露全局对象
-    (global.define == null) && (global.define = define);
-    (global.require == null) && (global.require = require);
+    if (!global.define) {
+        global.define = define;
+    }
+    if (!global.require) {
+        global.require = require;
+    }
 })(this);
