@@ -247,6 +247,21 @@ input { font-size: 12px; width: 210px;}
         <td><input value="localLoadCss" type="button"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <th colspan="2" align="left">Particular Cases:</th>
+    </tr>
+    <tr>
+        <td><input value="defineInScript" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="defineManyInScript" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="nonstandardId" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
 </table>
 <table>
     <tr>
@@ -339,6 +354,182 @@ input { font-size: 12px; width: 210px;}
 </table>
 
 <script>
+
+function defineInScript( stateTd, callback ) {
+    define('define-in-script', { name: 'define-in-script' });
+    require([ 'define-in-script' ], function (mod) {
+        if (mod.name === 'define-in-script') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        callback();
+    });
+}
+
+function defineManyInScript( stateTd, callback ) {
+    define('define-in-script/cat',
+        ['require', './index'],
+        function ( r ) {
+            return {
+                name: 'define-in-script/cat',
+                check: function () {
+                    return r( './index' ).name == 'define-in-script/index';
+                }
+            };
+        }
+    );
+
+    define(
+        'define-in-script/dog',
+        [],
+        function () {
+            return {
+                name: 'define-in-script/dog'
+            };
+        }
+    );
+
+    define(
+        'define-in-script/lion',
+        [],
+        function () {
+            return {
+                name: 'define-in-script/lion'
+            };
+        }
+    );
+
+    define(
+        'define-in-script/tiger',
+        [],
+        function () {
+            return {
+                name: 'define-in-script/tiger'
+            };
+        }
+    );
+
+    define(
+        'define-in-script/index',
+        [
+            'require',
+            './cat',
+            './dog',
+            'define-in-script/tiger',
+            './lion'
+        ],
+        function ( r, cat, dog, tiger ) {
+            var lion = r( './lion' );
+
+            return {
+                name: 'define-in-script/index',
+                check: function () {
+                    var valid =
+                        cat.name == 'define-in-script/cat' && cat.check()
+                        && dog.name == 'define-in-script/dog'
+                        && tiger.name == 'define-in-script/tiger'
+                        && lion.name == 'define-in-script/lion';
+                    return valid;
+                }
+            };
+        }
+    );
+
+    require([ 'define-in-script/index' ], function (index) {
+        if (index.check()) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        callback();
+    });
+}
+
+function nonstandardId( stateTd, callback ) {
+    define('nonstandard: define$in-script/cat',
+        ['require', './index'],
+        function ( r ) {
+            return {
+                name: 'nonstandard: define$in-script/cat',
+                check: function () {
+                    return r( './index' ).name == 'nonstandard: define$in-script/index';
+                }
+            };
+        }
+    );
+
+    define(
+        'nonstandard: define$in-script/dog',
+        [],
+        function () {
+            return {
+                name: 'nonstandard: define$in-script/dog'
+            };
+        }
+    );
+
+    define(
+        'nonstandard: define$in-script/lion',
+        [],
+        function () {
+            return {
+                name: 'nonstandard: define$in-script/lion'
+            };
+        }
+    );
+
+    define(
+        'nonstandard: define$in-script/tiger',
+        [],
+        function () {
+            return {
+                name: 'nonstandard: define$in-script/tiger'
+            };
+        }
+    );
+
+    define(
+        'nonstandard: define$in-script/index',
+        [
+            'require',
+            './cat',
+            './dog',
+            'nonstandard: define$in-script/tiger',
+            './lion'
+        ],
+        function ( r, cat, dog, tiger ) {
+            var lion = r( './lion' );
+
+            return {
+                name: 'nonstandard: define$in-script/index',
+                check: function () {
+                    var valid =
+                        cat.name == 'nonstandard: define$in-script/cat' && cat.check()
+                        && dog.name == 'nonstandard: define$in-script/dog'
+                        && tiger.name == 'nonstandard: define$in-script/tiger'
+                        && lion.name == 'nonstandard: define$in-script/lion';
+                    return valid;
+                }
+            };
+        }
+    );
+
+    require([ 'nonstandard: define$in-script/index' ], function (index) {
+        if (index.check()) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        callback();
+    });
+}
 
 function readConfig( stateTd, callback ) {
     var conf = require.config();
