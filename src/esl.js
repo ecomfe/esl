@@ -1511,7 +1511,7 @@ var esl;
     function parseId(id) {
         var segs = id.split('!');
 
-        if (/^[-_a-z0-9\.]+(\/[-_a-z0-9\.]+)*$/i.test(segs[0])) {
+        if (segs[0]) {
             return {
                 module   : segs[0],
                 resource : segs[1]
