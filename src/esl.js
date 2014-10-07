@@ -287,7 +287,7 @@ var esl;
             if (tryDefineTimeout) {
                 clearTimeout(tryDefineTimeout);
             }
-            tryDefineTimeout = setTimeout(modAnalyse, 1);
+            //tryDefineTimeout = setTimeout(modAnalyse, 1);
         }
         else {
             // 纪录到共享变量中，在load或readystatechange中处理
@@ -828,7 +828,6 @@ var esl;
         noRequests = noRequests || {};
         var isCallbackCalled = 0;
         if (ids instanceof Array) {
-            modAutoInvoke();
             tryFinishRequire();
 
             if (!isCallbackCalled) {
@@ -846,6 +845,8 @@ var esl;
                     }
 
                 });
+
+                modAnalyse();
             }
         }
 
