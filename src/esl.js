@@ -26,15 +26,6 @@ var esl;
     var modModules = {};
 
     /**
-     * 模块容器副本，不包含resource
-     * 在modAnalyse时，从list里遍历比forin更高效
-     *
-     * @inner
-     * @type {Array}
-     */
-    var modModuleList = [];
-
-    /**
      * 自动定义的模块表
      *
      * 模块define factory是用到时才执行，但是以下几种情况需要自动马上执行：
@@ -325,6 +316,8 @@ var esl;
      * @param {*} factory 模块定义函数或模块对象
      */
     function modPreDefine(id, dependencies, factory) {
+        // 将模块存入容器
+        //
         // 模块内部信息包括
         // -----------------------------------
         // id: module id
@@ -342,7 +335,7 @@ var esl;
         // depPMs: 用于加载资源的模块集合，key是模块名，value是1，仅用于快捷查找
         // ------------------------------------
         if (!modModules[id]) {
-            var module = {
+            modModules[id] = {
                 id          : id,
                 depsDec     : dependencies,
                 deps        : dependencies || ['require', 'exports', 'module'],
@@ -357,10 +350,6 @@ var esl;
                 depRs       : [],
                 depPMs      : []
             };
-
-            // 将模块存入容器
-            modModules[id] = module;
-            modModuleList.push(module);
         }
     }
 
