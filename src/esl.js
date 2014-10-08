@@ -374,9 +374,9 @@ var esl;
      * modAnalyse完成后续的依赖分析处理，并进行依赖模块的加载
      *
      * @inner
-     * @param {Object} modules 模块对象
+     * @param {string} id 模块id
      */
-    function modAnalyse() {
+    function modAnalyse(id) {
         var requireModules = [];
         var requireModulesIndex = {};
 
@@ -395,91 +395,92 @@ var esl;
             requireModulesIndex[id] = 1;
         }
 
-        each(modModuleList, function (module) {
-            if (module.state > MODULE_PRE_DEFINED) {
-                return;
+        var module = modModules[id];
+        if (!module || module.state > MODULE_PRE_DEFINED) {
+            return;
+        }
+
+        var deps = module.deps;
+        var hardDependsCount = 0;
+        var factory = module.factory;
+
+        // 分析function body中的require
+        // 如果包含显式依赖声明，根据AMD规定和性能考虑，可以不分析factoryBody
+        if (typeof factory === 'function') {
+            hardDependsCount = Math.min(factory.length, deps.length);
+
+            // If the dependencies argument is present, the module loader
+            // SHOULD NOT scan for dependencies within the factory function.
+            !module.depsDec && factory.toString()
+                .replace(/(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg, '')
+                .replace(/require\(\s*(['"'])([^'"]+)\1\s*\)/g,
+                    function ($0, $1, depId) {
+                        deps.push(depId);
+                    }
+                );
+        }
+
+        each(deps, function (depId, index) {
+            var idInfo = parseId(depId);
+            var absId = normalize(idInfo.module, id);
+            var moduleInfo;
+            var resInfo;
+
+            if (absId && !BUILDIN_MODULE[absId]) {
+                // 如果依赖是一个资源，将其信息添加到module.depRs
+                //
+                // module.depRs中的项有可能是重复的。
+                // 在这个阶段，加载resource的module可能还未defined，
+                // 导致此时resource id无法被normalize。
+                //
+                // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
+                // - js!../name.js
+                // - js!a/name.js
+                // - ../../js!../name.js
+                //
+                // 所以加载资源的module ready时，需要遍历module.depRs进行处理
+                if (idInfo.resource) {
+                    resInfo = {
+                        id       : depId,
+                        module   : absId,
+                        resource : idInfo.resource
+                    };
+                    autoDefineModules[absId] = 1;
+                    module.depPMs.push(absId);
+                    module.depRs.push(resInfo);
+                }
+
+                // 对依赖模块的id normalize能保证正确性，在此处进行去重
+                moduleInfo = module.depMkv[absId];
+                if (!moduleInfo) {
+                    moduleInfo = {
+                        id      : idInfo.module,
+                        absId   : absId,
+                        hard    : index < hardDependsCount
+                    };
+                    module.depMs.push(moduleInfo);
+                    module.depMkv[absId] = moduleInfo;
+                    addRequireModule(absId);
+                }
+            }
+            else {
+                moduleInfo = { absId: absId };
             }
 
-            var deps = module.deps;
-            var hardDependsCount = 0;
-            var factory = module.factory;
-
-            // 分析function body中的require
-            // 如果包含显式依赖声明，根据AMD规定和性能考虑，可以不分析factoryBody
-            if (typeof factory === 'function') {
-                hardDependsCount = Math.min(factory.length, deps.length);
-
-                // If the dependencies argument is present, the module loader
-                // SHOULD NOT scan for dependencies within the factory function.
-                !module.depsDec && factory.toString()
-                    .replace(/(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg, '')
-                    .replace(/require\(\s*(['"'])([^'"]+)\1\s*\)/g,
-                        function ($0, $1, depId) {
-                            deps.push(depId);
-                        }
-                    );
+            // 如果当前正在分析的依赖项是define中声明的，
+            // 则记录到module.factoryDeps中
+            // 在factory invoke前将用于生成invoke arguments
+            if (index < hardDependsCount) {
+                module.factoryDeps.push(resInfo || moduleInfo);
             }
-
-            each(deps, function (depId, index) {
-                var idInfo = parseId(depId);
-                var absId = normalize(idInfo.module, module.id);
-                var moduleInfo;
-                var resInfo;
-
-                if (absId && !BUILDIN_MODULE[absId]) {
-                    // 如果依赖是一个资源，将其信息添加到module.depRs
-                    //
-                    // module.depRs中的项有可能是重复的。
-                    // 在这个阶段，加载resource的module可能还未defined，
-                    // 导致此时resource id无法被normalize。
-                    //
-                    // 比如对a/b/c而言，下面几个resource可能指的是同一个资源：
-                    // - js!../name.js
-                    // - js!a/name.js
-                    // - ../../js!../name.js
-                    //
-                    // 所以加载资源的module ready时，需要遍历module.depRs进行处理
-                    if (idInfo.resource) {
-                        resInfo = {
-                            id       : depId,
-                            module   : absId,
-                            resource : idInfo.resource
-                        };
-                        autoDefineModules[absId] = 1;
-                        module.depPMs.push(absId);
-                        module.depRs.push(resInfo);
-                    }
-
-                    // 对依赖模块的id normalize能保证正确性，在此处进行去重
-                    moduleInfo = module.depMkv[absId];
-                    if (!moduleInfo) {
-                        moduleInfo = {
-                            id      : idInfo.module,
-                            absId   : absId,
-                            hard    : index < hardDependsCount
-                        };
-                        module.depMs.push(moduleInfo);
-                        module.depMkv[absId] = moduleInfo;
-                        addRequireModule(absId);
-                    }
-                }
-                else {
-                    moduleInfo = { absId: absId };
-                }
-
-                // 如果当前正在分析的依赖项是define中声明的，
-                // 则记录到module.factoryDeps中
-                // 在factory invoke前将用于生成invoke arguments
-                if (index < hardDependsCount) {
-                    module.factoryDeps.push(resInfo || moduleInfo);
-                }
-            });
-
-            module.state = MODULE_ANALYZED;
-            modInitFactoryInvoker(module.id);
         });
 
-        modAutoInvoke();
+        module.state = MODULE_ANALYZED;
+        each(module.depMs, function (dep) {
+            modAnalyse(dep.absId);
+        });
+
+        modInitFactoryInvoker(id);
         nativeRequire(requireModules);
     }
 
@@ -802,7 +803,7 @@ var esl;
         });
 
         wait4PreDefine.length = 0;
-        modAnalyse();
+        modAnalyse(currentId);
     }
 
     /**
@@ -842,11 +843,11 @@ var esl;
                                 : loadModule
                             )(id, baseId);
                         }
+
+                        modAnalyse(id);
                     }
-
                 });
-
-                modAnalyse();
+                modAutoInvoke();
             }
         }
 
@@ -931,6 +932,10 @@ var esl;
                 script = null;
 
                 completePreDefine(moduleId);
+                for (var key in autoDefineModules) {
+                    modAnalyse(key);
+                }
+                modAutoInvoke();
             }
         }
     }
