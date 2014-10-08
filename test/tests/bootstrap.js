@@ -22,7 +22,7 @@
     dohPath = dohPath.substring(0, i + 1) + 'tests/doh/';
 
     function write(path) {
-        html += '<' + 'script src="' + path + '"></' + 'script>';
+        html += '<' + 'script src="' + path + '" charset="UTF-8"></' + 'script>';
     }
 
     //Only allow impl and config args that do not have relative paths
