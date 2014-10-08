@@ -126,7 +126,7 @@ var esl;
      *
      * @type {string}
      */
-    require.version = '1.8.4';
+    require.version = '1.8.6';
 
     /**
      * loader名称
