@@ -278,7 +278,6 @@ var esl;
             if (tryDefineTimeout) {
                 clearTimeout(tryDefineTimeout);
             }
-            //tryDefineTimeout = setTimeout(modAnalyse, 1);
         }
         else {
             // 纪录到共享变量中，在load或readystatechange中处理
