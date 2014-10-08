@@ -453,7 +453,7 @@ var esl;
                 }
             }
             else {
-                moduleInfo = { absId: absId };
+                moduleInfo = {absId: absId};
             }
 
             // 如果当前正在分析的依赖项是define中声明的，
@@ -554,7 +554,7 @@ var esl;
                         each(module.depRs, function (res) {
                             if (!res.absId && res.module === pluginModuleId) {
                                 res.absId = normalize(res.id, id);
-                                nativeRequire([ res.absId ], modAutoInvoke);
+                                nativeRequire([res.absId], modAutoInvoke);
                             }
                         });
                     }
@@ -617,6 +617,7 @@ var esl;
                     }
 
                     module.invokeFactory = null;
+                    delete autoDefineModules[id];
                 }
                 catch (ex) {
                     invoking = 0;
@@ -822,7 +823,6 @@ var esl;
 
             if (!isCallbackCalled) {
                 each(ids, function (id) {
-
                     if (!(BUILDIN_MODULE[id] || modIs(id, MODULE_DEFINED))) {
                         modAddDefinedListener(id, tryFinishRequire);
 
@@ -836,6 +836,7 @@ var esl;
                         modAnalyse(id);
                     }
                 });
+
                 modAutoInvoke();
             }
         }
@@ -988,7 +989,7 @@ var esl;
                 idInfo.resource,
                 pluginRequire,
                 pluginOnload,
-                moduleConfigGetter.call({ id: pluginAndResource })
+                moduleConfigGetter.call({id: pluginAndResource})
             );
         }
 
@@ -1195,7 +1196,7 @@ var esl;
             item.v = mapIndex;
 
             if (!(value instanceof Array)) {
-                value = [ value ];
+                value = [value];
             }
 
             each(value, function (meetId) {
@@ -1294,7 +1295,7 @@ var esl;
                         nativeRequire(normalize(requireId, baseId));
                 }
 
-                return requiredCache[ requireId ];
+                return requiredCache[requireId];
             }
             else if (requireId instanceof Array) {
                 // 分析是否有resource，取出pluginModule先
