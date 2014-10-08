@@ -366,26 +366,8 @@ var esl;
      * @param {string} id 模块id
      */
     function modAnalyse(id) {
-        var requireModules = [];
-        var requireModulesIndex = {};
-
-        /**
-         * 添加需要请求的模块
-         *
-         * @inner
-         * @param {string} id 模块id
-         */
-        function addRequireModule(id) {
-            if (modModules[id] || requireModulesIndex[id]) {
-                return;
-            }
-
-            requireModules.push(id);
-            requireModulesIndex[id] = 1;
-        }
-
         var module = modModules[id];
-        if (!module || module.state > MODULE_PRE_DEFINED) {
+        if (!module || modIs(id, MODULE_ANALYZED)) {
             return;
         }
 
@@ -409,6 +391,7 @@ var esl;
                 );
         }
 
+        var requireModules = [];
         each(deps, function (depId, index) {
             var idInfo = parseId(depId);
             var absId = normalize(idInfo.module, id);
@@ -449,7 +432,7 @@ var esl;
                     };
                     module.depMs.push(moduleInfo);
                     module.depMkv[absId] = moduleInfo;
-                    addRequireModule(absId);
+                    requireModules.push(absId);
                 }
             }
             else {
@@ -465,10 +448,6 @@ var esl;
         });
 
         module.state = MODULE_ANALYZED;
-        each(module.depMs, function (dep) {
-            modAnalyse(dep.absId);
-        });
-
         modInitFactoryInvoker(id);
         nativeRequire(requireModules);
     }
