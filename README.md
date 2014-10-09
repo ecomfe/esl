@@ -27,13 +27,13 @@ See [Configuration Options](doc/config.md)
 
 ```html
 <!-- normal -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-4/esl.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-6/esl.js"></script>
 
 <!-- min -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-4/esl.min.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-6/esl.min.js"></script>
 
 <!-- source -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-4/esl.source.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-6/esl.source.js"></script>
 ```
 
 [过往版本](CDN.md)
@@ -45,7 +45,7 @@ See [Configuration Options](doc/config.md)
 `uglifyjs -mc + gzip`
 
 - `esl 1.8.4 normal` 3.4k
-- `esl 1.8.4 min` 3.2k
+- `esl 1.8.4 min` 3.1k
 - `requirejs 2.1.14` 6.1k
 
 
