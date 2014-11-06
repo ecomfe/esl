@@ -45,6 +45,18 @@ var esl;
     var MODULE_DEFINED = 4;
 
     /**
+     * 内建module名称集合
+     *
+     * @inner
+     * @type {Object}
+     */
+    var BUILDIN_MODULE = {
+        require: require,
+        exports: 1,
+        module: 1
+    };
+
+    /**
      * 全局require函数
      *
      * @inner
@@ -62,12 +74,33 @@ var esl;
     var waitTimeout;
     // #end-ignore
 
+    /* eslint-disable key-spacing */
+    /**
+     * require配置
+     *
+     * @inner
+     * @type {Object}
+     */
+    var requireConf = {
+        baseUrl     : './',
+        paths       : {},
+        config      : {},
+        map         : {},
+        packages    : [],
+        // #begin-ignore
+        waitSeconds : 0,
+        // #end-ignore
+        noRequests  : {},
+        urlArgs     : {}
+    };
+    /* eslint-enable key-spacing */
+
     /**
      * 加载模块
      *
      * @param {string|Array} requireId 模块id或模块id数组，
      * @param {Function=} callback 加载完成的回调函数
-     * @return {*}
+     * @return {*} requireId为string时返回模块暴露对象
      */
     function require(requireId, callback) {
         // #begin-ignore
@@ -161,6 +194,7 @@ var esl;
          *
          * @inner
          * @param {string} id 模块id
+         * @param {boolean} hard 是否装载时依赖
          */
         function checkError(id, hard) {
             if (visited[id] || modIs(id, MODULE_DEFINED)) {
@@ -199,9 +233,11 @@ var esl;
             }
         }
 
+        /* eslint-disable guard-for-in */
         for (var id in autoDefineModules) {
             checkError(id, 1);
         }
+        /* eslint-enable guard-for-in */
 
         if (hangModules.length || missModules.length) {
             throw new Error(
@@ -214,6 +250,36 @@ var esl;
         }
     }
     // #end-ignore
+
+    /**
+     * 未预定义的模块集合
+     * 主要存储匿名方式define的模块
+     *
+     * @inner
+     * @type {Array}
+     */
+    var wait4PreDefine = [];
+
+    /**
+     * 完成模块预定义，此时处理的模块是匿名define的模块
+     *
+     * @inner
+     * @param {string} currentId 匿名define的模块的id
+     */
+    function completePreDefine(currentId) {
+        // HACK: 这里在IE下有个性能陷阱，不能使用任何变量。
+        //       否则貌似会形成变量引用和修改的读写锁，导致wait4PreDefine释放困难
+        each(wait4PreDefine, function (mod) {
+            modPreDefine(
+                currentId,
+                mod.deps,
+                mod.factory
+            );
+        });
+
+        wait4PreDefine.length = 0;
+        modAnalyse(currentId);
+    }
 
     /**
      * 尝试完成模块定义的定时器
@@ -283,8 +349,8 @@ var esl;
             // 纪录到共享变量中，在load或readystatechange中处理
             // 标准浏览器下，使用匿名define时，将进入这个分支
             wait4PreDefine[0] = {
-                deps    : dependencies,
-                factory : factory
+                deps: dependencies,
+                factory: factory
             };
         }
     }
@@ -334,6 +400,7 @@ var esl;
         // depPMs: 用于加载资源的模块集合，key是模块名，value是1，仅用于快捷查找
         // ------------------------------------
         if (!modModules[id]) {
+            /* eslint-disable key-spacing */
             modModules[id] = {
                 id          : id,
                 depsDec     : dependencies,
@@ -349,6 +416,7 @@ var esl;
                 depRs       : [],
                 depPMs      : []
             };
+            /* eslint-enable key-spacing */
         }
     }
 
@@ -425,9 +493,9 @@ var esl;
                 moduleInfo = mod.depMkv[absId];
                 if (!moduleInfo) {
                     moduleInfo = {
-                        id      : idInfo.mod,
-                        absId   : absId,
-                        hard    : index < hardDependsCount
+                        id: idInfo.mod,
+                        absId: absId,
+                        hard: index < hardDependsCount
                     };
                     mod.depMs.push(moduleInfo);
                     mod.depMkv[absId] = moduleInfo;
@@ -457,10 +525,12 @@ var esl;
      * @inner
      */
     function modAutoInvoke() {
+        /* eslint-disable guard-for-in */
         for (var id in autoDefineModules) {
             modUpdatePreparedState(id);
             modTryInvokeFactory(id);
         }
+        /* eslint-enable guard-for-in */
     }
 
     /**
@@ -522,6 +592,7 @@ var esl;
         var invoking;
 
         mod.invokeFactory = invokeFactory;
+        /* eslint-disable max-nested-callbacks */
         each(
             mod.depPMs,
             function (pluginModuleId) {
@@ -540,6 +611,7 @@ var esl;
 
             }
         );
+        /* eslint-enable max-nested-callbacks */
 
         /**
          * 初始化模块
@@ -578,9 +650,9 @@ var esl;
                     var args = modGetModulesExports(
                         factoryDeps,
                         {
-                            require : mod.require,
-                            exports : mod.exports,
-                            module  : mod
+                            require: mod.require,
+                            exports: mod.exports,
+                            module: mod
                         }
                     );
 
@@ -623,7 +695,7 @@ var esl;
      * @inner
      * @param {string} id 模块标识
      * @param {number} state 状态码，使用时传入相应的枚举变量，比如`MODULE_DEFINED`
-     * @return {boolean}
+     * @return {boolean} 是否完成相应的状态
      */
     function modIs(id, state) {
         return modModules[id] && modModules[id].state >= state;
@@ -650,7 +722,7 @@ var esl;
      * @inner
      * @param {Array} modules 模块id数组
      * @param {Object} buildinModules 内建模块对象
-     * @return {Array}
+     * @return {Array} 模块exports数组
      */
     function modGetModulesExports(modules, buildinModules) {
         var args = [];
@@ -699,7 +771,6 @@ var esl;
      *
      * @inner
      * @param {string} id 模块标识
-     * @param {number} state 目标状态
      */
     function modDefined(id) {
         var listeners = modDefinedListeners[id] || [];
@@ -723,7 +794,7 @@ var esl;
      *
      * @inner
      * @param {string} id 模块标识
-     * @return {*}
+     * @return {*} 模块的exports
      */
     function modGetModuleExports(id) {
         if (modIs(id, MODULE_DEFINED)) {
@@ -734,52 +805,13 @@ var esl;
     }
 
     /**
-     * 内建module名称集合
-     *
-     * @inner
-     * @type {Object}
-     */
-    var BUILDIN_MODULE = {
-        require : require,
-        exports : 1,
-        module  : 1
-    };
-
-    /**
-     * 未预定义的模块集合
-     * 主要存储匿名方式define的模块
-     *
-     * @inner
-     * @type {Array}
-     */
-    var wait4PreDefine = [];
-
-    /**
-     * 完成模块预定义，此时处理的模块是匿名define的模块
-     *
-     * @inner
-     */
-    function completePreDefine(currentId) {
-        // HACK: 这里在IE下有个性能陷阱，不能使用任何变量。
-        //       否则貌似会形成变量引用和修改的读写锁，导致wait4PreDefine释放困难
-        each(wait4PreDefine, function (mod) {
-            modPreDefine(
-                currentId,
-                mod.deps,
-                mod.factory
-            );
-        });
-
-        wait4PreDefine.length = 0;
-        modAnalyse(currentId);
-    }
-
-    /**
      * 获取模块
      *
      * @param {string|Array} ids 模块名称或模块名称列表
      * @param {Function=} callback 获取模块完成时的回调函数
-     * @return {Object}
+     * @param {string} baseId 基础id，用于当ids是relative id时的normalize
+     * @param {Object} noRequests 无需发起请求的模块集合
+     * @return {Object} 模块对象
      */
     function nativeRequire(ids, callback, baseId, noRequests) {
         // 根据 https://github.com/amdjs/amdjs-api/wiki/require
@@ -875,7 +907,7 @@ var esl;
         // 再throw一个Error多此一举了
         var script = document.createElement('script');
         script.setAttribute('data-require-id', moduleId);
-        script.src = toUrl(moduleId + '.js') ;
+        script.src = toUrl(moduleId + '.js');
         script.async = true;
         if (script.readyState) {
             script.onreadystatechange = loadedListener;
@@ -900,9 +932,11 @@ var esl;
                 script = null;
 
                 completePreDefine(moduleId);
+                /* eslint-disable guard-for-in */
                 for (var key in autoDefineModules) {
                     modAnalyse(key);
                 }
+                /* eslint-enable guard-for-in */
                 modAutoInvoke();
             }
         }
@@ -975,59 +1009,40 @@ var esl;
     }
 
     /**
-     * require配置
-     *
-     * @inner
-     * @type {Object}
-     */
-    var requireConf = {
-        baseUrl     : './',
-        paths       : {},
-        config      : {},
-        map         : {},
-        packages    : [],
-        // #begin-ignore
-        waitSeconds : 0,
-        // #end-ignore
-        noRequests  : {},
-        urlArgs     : {}
-    };
-
-    /**
      * 配置require
      *
      * @param {Object} conf 配置对象
      */
     require.config = function (conf) {
-        function mergeArrayItem(item) {
-            oldValue.push(item);
-        }
-
         if (conf) {
+            /* eslint-disable guard-for-in */
             for (var key in requireConf) {
                 var newValue = conf[key];
                 var oldValue = requireConf[key];
 
-                if (newValue) {
-                    if (key === 'urlArgs' && typeof newValue === 'string') {
-                        requireConf.urlArgs['*'] = newValue;
+                if (!newValue) {
+                    continue;
+                }
+
+                if (key === 'urlArgs' && typeof newValue === 'string') {
+                    requireConf.urlArgs['*'] = newValue;
+                }
+                else {
+                    // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
+                    if (oldValue instanceof Array) {
+                        oldValue.push.apply(oldValue, newValue);
+                    }
+                    else if (typeof oldValue === 'object') {
+                        for (var k in newValue) {
+                            oldValue[k] = newValue[k];
+                        }
                     }
                     else {
-                        // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
-                        if (oldValue instanceof Array) {
-                            each(newValue, mergeArrayItem);
-                        }
-                        else if (typeof oldValue === 'object') {
-                            for (var key in newValue) {
-                                oldValue[key] = newValue[key];
-                            }
-                        }
-                        else {
-                            requireConf[key] = newValue;
-                        }
+                        requireConf[key] = newValue;
                     }
                 }
             }
+            /* eslint-enable guard-for-in */
 
             createConfIndex();
         }
@@ -1113,7 +1128,7 @@ var esl;
      * @inner
      * @param {Object} value 源值
      * @param {boolean} allowAsterisk 是否允许*号表示匹配所有
-     * @return {Array}
+     * @return {Array} 索引对象
      */
     function createKVSortedIndex(value, allowAsterisk) {
         var index = kv2List(value, 1, allowAsterisk);
@@ -1205,7 +1220,7 @@ var esl;
      *
      * @inner
      * @param {string} source 源字符串
-     * @return {string}
+     * @return {string} url
      */
     function toUrl(source) {
         // 分离 模块标识 和 .extension
@@ -1262,7 +1277,7 @@ var esl;
      *
      * @inner
      * @param {number} baseId 当前module id
-     * @return {Function}
+     * @return {Function} local require函数
      */
     function createLocalRequire(baseId) {
         var requiredCache = {};
@@ -1353,7 +1368,7 @@ var esl;
          *
          * @inner
          * @param {string} id 符合描述格式的源字符串
-         * @return {string}
+         * @return {string} url
          */
         req.toUrl = function (id) {
             return toUrl(normalize(id, baseId));
@@ -1368,7 +1383,7 @@ var esl;
      * @inner
      * @param {string} id 需要normalize的模块标识
      * @param {string} baseId 当前环境的模块标识
-     * @return {string}
+     * @return {string} normalize结果
      */
     function normalize(id, baseId) {
         if (!id) {
@@ -1433,9 +1448,9 @@ var esl;
      * 相对id转换成绝对id
      *
      * @inner
-     * @param {string} id 要转换的id
+     * @param {string} id 要转换的相对id
      * @param {string} baseId 当前所在环境id
-     * @return {string}
+     * @return {string} 绝对id
      */
     function relative2absolute(id, baseId) {
         if (id.indexOf('.') === 0) {
@@ -1446,9 +1461,9 @@ var esl;
             var cutBaseTerms = 0;
             var cutNameTerms = 0;
 
+            /* eslint-disable block-scoped-var */
             pathLoop: for (var i = 0; i < nameLen; i++) {
-                var term = namePath[i];
-                switch (term) {
+                switch (namePath[i]) {
                     case '..':
                         if (cutBaseTerms < baseLen) {
                             cutBaseTerms++;
@@ -1465,6 +1480,7 @@ var esl;
                         break pathLoop;
                 }
             }
+            /* eslint-enable block-scoped-var */
 
             basePath.length = baseLen - cutBaseTerms;
             namePath = namePath.slice(cutNameTerms);
@@ -1480,7 +1496,7 @@ var esl;
      *
      * @inner
      * @param {string} id 标识
-     * @return {Object}
+     * @return {Object} id解析结果对象
      */
     function parseId(id) {
         var segs = id.split('!');
@@ -1500,7 +1516,9 @@ var esl;
      *
      * @inner
      * @param {Object} source 对象数据
-     * @return {Array.<Object>}
+     * @param {boolean} keyMatchable key是否允许被前缀匹配
+     * @param {boolean} allowAsterisk 是否支持*匹配所有
+     * @return {Array.<Object>} 对象转换数组
      */
     function kv2List(source, keyMatchable, allowAsterisk) {
         var list = [];
@@ -1537,7 +1555,7 @@ var esl;
      * 用于ie下define未指定module id时获取id
      *
      * @inner
-     * @return {HTMLDocument}
+     * @return {HTMLScriptElement} 当前script标签
      */
     function getCurrentScript() {
         if (currentlyAddingScript) {
@@ -1549,15 +1567,14 @@ var esl;
         ) {
             return interactiveScript;
         }
-        else {
-            var scripts = document.getElementsByTagName('script');
-            var scriptLen = scripts.length;
-            while (scriptLen--) {
-                var script = scripts[scriptLen];
-                if (script.readyState === 'interactive') {
-                    interactiveScript = script;
-                    return script;
-                }
+
+        var scripts = document.getElementsByTagName('script');
+        var scriptLen = scripts.length;
+        while (scriptLen--) {
+            var script = scripts[scriptLen];
+            if (script.readyState === 'interactive') {
+                interactiveScript = script;
+                return script;
             }
         }
     }
@@ -1591,7 +1608,7 @@ var esl;
      *
      * @inner
      * @param {string} prefix id前缀
-     * @return {RegExp}
+     * @return {RegExp} 前缀匹配的正则对象
      */
     function createPrefixRegexp(prefix) {
         return new RegExp('^' + prefix + '(/|$)');
@@ -1618,6 +1635,9 @@ var esl;
      * 根据元素的k或name项进行数组字符数逆序的排序函数
      *
      * @inner
+     * @param {Object} a 要比较的对象a
+     * @param {Object} b 要比较的对象b
+     * @return {number} 比较结果
      */
     function descSorterByKOrName(a, b) {
         var aValue = a.k || a.name;
