@@ -74,6 +74,7 @@ var esl;
     var waitTimeout;
     // #end-ignore
 
+    /* eslint-disable fecs-key-spacing */
     /* eslint-disable key-spacing */
     /**
      * require配置
@@ -82,16 +83,16 @@ var esl;
      * @type {Object}
      */
     var requireConf = {
-        baseUrl     : './',
-        paths       : {},
-        config      : {},
-        map         : {},
-        packages    : [],
+        baseUrl    : './',
+        paths      : {},
+        config     : {},
+        map        : {},
+        packages   : [],
         // #begin-ignore
-        waitSeconds : 0,
+        waitSeconds: 0,
         // #end-ignore
-        noRequests  : {},
-        urlArgs     : {}
+        noRequests : {},
+        urlArgs    : {}
     };
     /* eslint-enable key-spacing */
 
