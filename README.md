@@ -44,9 +44,9 @@ See [Configuration Options](doc/config.md)
 
 `uglifyjs -mc + gzip`
 
-- `esl 1.8.4 normal` 3.4k
-- `esl 1.8.4 min` 3.1k
-- `requirejs 2.1.14` 6.1k
+- `esl 1.8.6 normal` 3.4k
+- `esl 1.8.6 min` 3.1k
+- `requirejs 2.1.5` 6.2k
 
 
 ### 性能对比 (PERFORMANCE)
