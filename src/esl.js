@@ -51,7 +51,7 @@ var esl;
      * @type {Object}
      */
     var BUILDIN_MODULE = {
-        require: require,
+        require: globalRequire,
         exports: 1,
         module: 1
     };
@@ -103,7 +103,7 @@ var esl;
      * @param {Function=} callback 加载完成的回调函数
      * @return {*} requireId为string时返回模块暴露对象
      */
-    function require(requireId, callback) {
+    function globalRequire(requireId, callback) {
         // #begin-ignore
         // #begin assertNotContainRelativeId
         // 确定require的模块id不包含相对id。用于global require，提前预防难以跟踪的错误出现
@@ -160,14 +160,14 @@ var esl;
      *
      * @type {string}
      */
-    require.version = '1.8.6';
+    globalRequire.version = '1.8.6';
 
     /**
      * loader名称
      *
      * @type {string}
      */
-    require.loader = 'esl';
+    globalRequire.loader = 'esl';
 
     /**
      * 将模块标识转换成相对的url
@@ -175,7 +175,7 @@ var esl;
      * @param {string} id 模块标识
      * @return {string}
      */
-    require.toUrl = actualGlobalRequire.toUrl;
+    globalRequire.toUrl = actualGlobalRequire.toUrl;
 
     // #begin-ignore
     /**
@@ -289,7 +289,7 @@ var esl;
      * @param {Array=} dependencies 依赖模块列表
      * @param {Function=} factory 创建模块的工厂方法
      */
-    function define(id, dependencies, factory) {
+    function globalDefine(id, dependencies, factory) {
         // define(factory)
         // define(dependencies, factory)
         // define(id, factory)
@@ -313,10 +313,6 @@ var esl;
             return;
         }
 
-        // 出现window不是疏忽
-        // esl设计是做为browser端的loader
-        // 闭包的global更多意义在于：
-        //     define和require方法可以被挂到用户自定义对象中
         var opera = window.opera;
 
         // IE下通过current script的data-require-id获取当前id
@@ -342,7 +338,7 @@ var esl;
         }
     }
 
-    define.amd = {};
+    globalDefine.amd = {};
 
     /**
      * 模块配置获取函数
@@ -1000,7 +996,7 @@ var esl;
      *
      * @param {Object} conf 配置对象
      */
-    require.config = function (conf) {
+    globalRequire.config = function (conf) {
         if (conf) {
             /* eslint-disable guard-for-in */
             for (var key in requireConf) {
@@ -1642,32 +1638,16 @@ var esl;
     }
 
     // 暴露全局对象
-    //
-    // 如果define已经存在，说明已经有一个amd loader了，避免覆盖
-    // 这里有一个假设，只有amd loader会用define，但是，任何形式的loader可能会用require
-    //
-    // 使用 `global.` 的原因是，让被运行在第三方页面的代码，也能方便的用loader
-    // 第三方页面很可能存在一个loader，就算不存在，可能未来也会有。所以不能在全局用loader
-    // 这时，把esl的代码拿过去，只改全局IIFE最后的 `this`，就能获得namespace上的loader
-    //
-    //  // 声明自己的namespace
-    //  var selfnamespace = {};
-    //
-    //  // 这里是esl的代码
-    //  (function (global){
-    //      // esl的实现
-    //  })(selfnamespace); // 改这里的this
-    //
-    if (!global.define) {
-        global.define = define;
+    if (!define) {
+        define = globalDefine;
 
         // 可能碰到其他形式的loader，所以，不要覆盖人家
-        if (!global.require) {
-            global.require = require;
+        if (!require) {
+            require = globalRequire;
         }
 
         // 如果存在其他版本的esl，在define那里就判断过了，不会进入这个分支
         // 所以这里就不判断了，直接写
-        global.esl = require;
+        esl = globalRequire;
     }
 })(this);
