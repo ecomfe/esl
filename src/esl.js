@@ -160,7 +160,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '1.8.6';
+    globalRequire.version = '1.8.8';
 
     /**
      * loader名称

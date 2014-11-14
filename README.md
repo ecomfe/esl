@@ -27,13 +27,13 @@ See [Configuration Options](doc/config.md)
 
 ```html
 <!-- normal -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-6/esl.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-8/esl.js"></script>
 
 <!-- min -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-6/esl.min.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-8/esl.min.js"></script>
 
 <!-- source -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-6/esl.source.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-8/esl.source.js"></script>
 ```
 
 [过往版本](CDN.md)
