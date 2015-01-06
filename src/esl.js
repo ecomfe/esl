@@ -88,6 +88,7 @@ var esl;
         config     : {},
         map        : {},
         packages   : [],
+        shim       : {},
         // #begin-ignore
         waitSeconds: 0,
         // #end-ignore
@@ -1029,38 +1030,7 @@ var esl;
 
             createConfIndex();
         }
-
-        // 配置信息对象clone返回，避免返回结果对象被用户程序修改可能导致的问题
-        // return clone(requireConf);
     };
-
-    /**
-     * 对象克隆，支持raw type, Array, raw Object
-     *
-     * @inner
-     * @param {*} source 要克隆的对象
-     * @return {*}
-     */
-    // function clone(source) {
-    //     var result = source;
-
-    //     if (source instanceof Array) {
-    //         result = [];
-    //         each(source, function (item, i) {
-    //             result[i] = clone(item);
-    //         });
-    //     }
-    //     else if (typeof source === 'object') {
-    //         result = {};
-    //         for (var key in source) {
-    //             if (source.hasOwnProperty(key)) {
-    //                 result[key] = clone(source[key]);
-    //             }
-    //         }
-    //     }
-
-    //     return result;
-    // }
 
     // 初始化时需要创建配置索引
     createConfIndex();
