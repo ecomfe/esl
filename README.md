@@ -57,7 +57,7 @@ See [Configuration Options](doc/config.md)
 
 - `esl 1.8.6 normal` 3.4k
 - `esl 1.8.6 min` 3.1k
-- `requirejs 2.1.5` 6.2k
+- `requirejs 2.1.15` 6.2k
 
 
 ### 性能对比 (PERFORMANCE)
