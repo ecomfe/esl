@@ -872,12 +872,12 @@ var esl;
      *
      */
     function loadShim(moduleId) {
+        autoDefineModules[moduleId] = 1;
         if (loadingModules[moduleId] || modModules[moduleId]) {
             return;
         }
 
         loadingModules[moduleId] = 1;
-        autoDefineModules[moduleId] = 1;
         
         var shimConf = requireConf.shim[moduleId] || {};
         if (shimConf instanceof Array) {
@@ -913,8 +913,11 @@ var esl;
             if (exports == null) {
                 exports = {};
             }
+       
+            if (!modModules[moduleId]) {
+                globalDefine(moduleId, deps, exports);
+            }
             
-            globalDefine(moduleId, deps, exports);
             modAnalyse(moduleId);
             modAutoInvoke();
         }
