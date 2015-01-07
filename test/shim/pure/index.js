@@ -1,6 +1,8 @@
 var shimPureIndex = {
-    name: 'shim pure index',
-    a: shimPureA,
-    b: shimPureBOther,
-    bname: shimPureBOther.name
+    exports: {
+        name: 'shim pure index',
+        a: shimPureA,
+        b: shimPureBOther,
+        bname: shimPureBOther.name
+    }
 };

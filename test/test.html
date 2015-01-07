@@ -373,7 +373,7 @@ require.config({
     shim: {
         shimPureIndex: {
             deps: ['shimPureA', 'shimPureB'],
-            exports: 'shimPureIndex' 
+            exports: 'shimPureIndex.exports' 
         },
         shimPureA: {
             exports: 'shimPureA',
@@ -420,7 +420,7 @@ require.config({
 function pureShim(stateTd, callback) {
     require(['shimPureIndex', 'shimPureA', 'shimPureF'], function (index, a, f) {
         if (
-            shimPureIndex === index
+            index === shimPureIndex.exports
             && index.bname === 'shim pure b'
             && index.b === shimPureBOther
             && a.name === 'shim pure a'
