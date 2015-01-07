@@ -765,7 +765,7 @@ var esl;
         while (len--) {
             // 这里不做function类型的检测
             // 因为listener都是通过modOn传入的，modOn为内部调用
-            listeners[len]();
+            listeners[len](id);
         }
 
         // 清理listeners
@@ -821,10 +821,15 @@ var esl;
                         modAddDefinedListener(id, tryFinishRequire);
 
                         if (!noRequests[id]) {
-                            (id.indexOf('!') > 0
-                                ? loadResource
-                                : loadModule
-                            )(id, baseId);
+                            if (requireConf.shim[id]) {
+                                loadShim(id);
+                            }
+                            else {
+                                (id.indexOf('!') > 0
+                                    ? loadResource
+                                    : loadModule
+                                )(id, baseId);
+                            }
                         }
 
                         modAnalyse(id);
@@ -862,6 +867,78 @@ var esl;
             }
         }
     }
+    /**
+     *
+     */
+    function loadShim(moduleId) {
+        if (loadingModules[moduleId] || modModules[moduleId]) {
+            return;
+        }
+
+        loadingModules[moduleId] = 1;
+        autoDefineModules[moduleId] = 1;
+        
+        var shimConf = requireConf.shim[moduleId] || {};
+        if (shimConf instanceof Array) {
+            shimConf = {
+                deps: shimConf
+            };
+
+            requireConf.shim[moduleId] = shimConf;
+        }
+
+        var deps = shimConf.deps || [];
+
+        function loaded() {
+            var exports;
+            if (typeof shimConf.init === 'function') {
+                exports = shimConf.init.apply(
+                    global, 
+                    modGetModulesExports(deps, BUILDIN_MODULE)
+                );
+            }
+            
+            if (exports == null && shimConf.exports) {
+                exports = global;
+                each(
+                    shimConf.exports.split('.'),
+                    function (prop) {
+                        exports = exports[prop];
+                        return !!exports;
+                    }
+                );
+            }
+
+            if (exports == null) {
+                exports = {};
+            }
+            
+            globalDefine(moduleId, deps, exports);
+            modAnalyse(moduleId);
+            modAutoInvoke();
+        }
+
+        function load() {
+            var isReady = 1;
+            each(deps, function (dep) {
+                isReady = !!modIs(dep, MODULE_DEFINED);
+                return isReady;
+            });
+            
+            if (isReady) {
+                createScript(moduleId, loaded);
+            }
+            
+            return isReady;
+        }
+
+        if (!load()) {
+            each(deps, function (dep) {
+                modAddDefinedListener(dep, load);
+                loadShim(dep);
+            });
+        }
+    }
 
     /**
      * 正在加载的模块列表
@@ -883,46 +960,21 @@ var esl;
         }
 
         loadingModules[moduleId] = 1;
-
-        // 创建script标签
-        //
-        // 这里不挂接onerror的错误处理
-        // 因为高级浏览器在devtool的console面板会报错
-        // 再throw一个Error多此一举了
-        var script = document.createElement('script');
-        script.setAttribute('data-require-id', moduleId);
-        script.src = toUrl(moduleId + '.js');
-        script.async = true;
-        if (script.readyState) {
-            script.onreadystatechange = loadedListener;
-        }
-        else {
-            script.onload = loadedListener;
-        }
-        appendScript(script);
+        createScript(moduleId, loaded);
 
         /**
          * script标签加载完成的事件处理函数
          *
          * @inner
          */
-        function loadedListener() {
-            var readyState = script.readyState;
-            if (
-                typeof readyState === 'undefined'
-                || /^(loaded|complete)$/.test(readyState)
-            ) {
-                script.onload = script.onreadystatechange = null;
-                script = null;
-
-                completePreDefine(moduleId);
-                /* eslint-disable guard-for-in */
-                for (var key in autoDefineModules) {
-                    modAnalyse(key);
-                }
-                /* eslint-enable guard-for-in */
-                modAutoInvoke();
+        function loaded() {
+            completePreDefine(moduleId);
+            /* eslint-disable guard-for-in */
+            for (var key in autoDefineModules) {
+                modAnalyse(key);
             }
+            /* eslint-enable guard-for-in */
+            modAutoInvoke();
         }
     }
 
@@ -1538,13 +1590,35 @@ var esl;
         headElement = baseElement.parentNode;
     }
 
-    /**
-     * 向页面中插入script标签
-     *
-     * @inner
-     * @param {HTMLScriptElement} script script标签
-     */
-    function appendScript(script) {
+    function createScript(moduleId, onload) {
+        // 创建script标签
+        //
+        // 这里不挂接onerror的错误处理
+        // 因为高级浏览器在devtool的console面板会报错
+        // 再throw一个Error多此一举了
+        var script = document.createElement('script');
+        script.setAttribute('data-require-id', moduleId);
+        script.src = toUrl(moduleId + '.js');
+        script.async = true;
+        if (script.readyState) {
+            script.onreadystatechange = innerOnload; 
+        }
+        else {
+            script.onload = innerOnload; 
+        }
+
+        function innerOnload() {
+            var readyState = script.readyState;
+            if (
+                typeof readyState === 'undefined'
+                || /^(loaded|complete)$/.test(readyState)
+            ) {
+                script.onload = script.onreadystatechange = null;
+                script = null;
+
+                onload();
+            } 
+        }
         currentlyAddingScript = script;
 
         // If BASE tag is in play, using appendChild is a problem for IE6.
@@ -1555,7 +1629,7 @@ var esl;
 
         currentlyAddingScript = null;
     }
-
+ 
     /**
      * 创建id前缀匹配的正则对象
      *

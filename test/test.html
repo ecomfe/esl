@@ -42,13 +42,16 @@ require.config( {
         'moduleconf/cat': {
             'desc': 'cat'
         }
-    },
+    }
+});
+require.config({
     noRequests: {
         'noRequests/simple/cat': 'noRequests/simple/index',
         'noRequests/all/cat': '*',
         'noRequests/complex/child': [ 'noRequests/complex/index1', 'noRequests/complex/index2' ]
     }
-} );
+});
+
 require.config( {
     urlArgs: {
         css: 'css',
@@ -309,6 +312,17 @@ input { font-size: 12px; width: 210px;}
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <th colspan="2" align="left">Conf shim:</th>
+    </tr>
+    <tr>
+        <td><input value="pureShim" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <!--<tr>
+        <td><input value="mixedShim" type="button"></td>
+        <td class="uncheck"></td>
+    </tr-->
+    <tr>
         <th colspan="2" align="left">Conf urlArgs:</th>
     </tr>
     <tr>
@@ -342,17 +356,100 @@ input { font-size: 12px; width: 210px;}
         <td><input value="complexNoRequests_alone" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
-    <!-- see #10
-    <tr>
-        <th colspan="2" align="left">Read Conf:</th>
-    </tr>
-    <tr>
-        <td><input value="readConfig" type="button" data-ignore="timestat"></td>
-        <td class="uncheck"></td>
-    </tr>
-     -->
 </table>
 
+<script>
+// shim test
+require.config({
+    paths: {
+        shimPureIndex: 'shim/pure/index',
+        shimPureA: 'shim/pure/a',
+        shimPureB: 'shim/pure/b',
+        shimPureC: 'shim/pure/c',
+        shimPureD: 'shim/pure/d',
+        shimPureE: 'shim/pure/e',
+        shimPureF: 'shim/pure/f'
+    },
+    shim: {
+        shimPureIndex: {
+            deps: ['shimPureA', 'shimPureB'],
+            exports: 'shimPureIndex' 
+        },
+        shimPureA: {
+            exports: 'shimPureA',
+            deps: ['shimPureC', 'shimPureD', 'shimPureE'],
+            init: function (c, d, e) {
+                return {
+                    name: shimPureA.name,
+                    c: shimPureC,
+                    cname: shimPureC.name,
+                    d: shimPureD,
+                    dname: shimPureD.name,
+                    e: e,
+                    ename: e.name
+                };
+            }
+        },
+        shimPureB: {
+            exports: 'shimPureBOther'
+        },
+        shimPureC: ['shimPureD', 'shimPureE'],
+        shimPureE: {
+            deps: ['shimPureD', 'shimPureB'],
+            init: function (d, b) {
+                return {
+                    name: shimPureEOther.name,
+                    raw: shimPureEOther,
+                    d: shimPureD,
+                    dname: shimPureD.name,
+                    b: b,
+                    bname: b.name
+                };
+            }
+        },
+        shimPureF: {
+            init: function () {
+                return {
+                    name: shimPureFName
+                };
+            }
+        }
+    }
+});
+
+function pureShim(stateTd, callback) {
+    require(['shimPureIndex', 'shimPureA', 'shimPureF'], function (index, a, f) {
+        if (
+            shimPureIndex === index
+            && index.bname === 'shim pure b'
+            && index.b === shimPureBOther
+            && a.name === 'shim pure a'
+            && a.cname === 'shim pure c'
+            && a.dname === 'shim pure d'
+            && a.ename === 'shim pure e'
+            && a.c === shimPureC
+            && a.d === shimPureD
+            && a.e.raw === shimPureEOther
+            && a.e.name === 'shim pure e'
+            && a.e.dname === 'shim pure d'
+            && a.e.bname === 'shim pure b'
+            && a.e.d === shimPureD
+            && a.e.b === shimPureBOther
+            && f.name === 'shim pure f'
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+</script>
 <script>
 
 function defineInScript( stateTd, callback ) {
@@ -529,47 +626,6 @@ function nonstandardId( stateTd, callback ) {
 
         callback();
     });
-}
-
-function readConfig( stateTd, callback ) {
-    var conf = require.config();
-    var ok = conf.baseUrl == './'
-        && conf.paths.css == '../src/css'
-        && conf.paths.abspath == '/test/pathstest'
-        && conf.map.usecjs.simple == 'cjs/simple'
-        && conf.map['usecjs/change2amd'].simple == 'amd/simple'
-        && conf.packages[0] == 'pkgclassic/1.0'
-        && conf.packages[1].name == 'pkgsetmain'
-        && conf.config['moduleconf/cat'].desc == 'cat'
-        && conf.urlArgs['*'] == 'urlArgs'
-        && conf.urlArgs['amd/simpleDependency'] == 'amdsd';
-
-    if (ok) {
-        conf = require.config({
-            paths: {
-                'justfortest': 'justfortestpath'
-            }
-        });
-        ok = conf.baseUrl == './'
-            && conf.paths.css == '../src/css'
-            && conf.paths.abspath == '/test/pathstest'
-            && conf.map.usecjs.simple == 'cjs/simple'
-            && conf.map['usecjs/change2amd'].simple == 'amd/simple'
-            && conf.packages[0] == 'pkgclassic/1.0'
-            && conf.packages[1].name == 'pkgsetmain'
-            && conf.config['moduleconf/cat'].desc == 'cat'
-            && conf.urlArgs['*'] == 'urlArgs'
-            && conf.urlArgs['amd/simpleDependency'] == 'amdsd'
-            && conf.paths.justfortest == 'justfortestpath';
-    }
-
-    if (ok) {
-        stateTd.className = 'pass';
-    }
-    else {
-        stateTd.className = 'fail';
-    }
-    callback();
 }
 
 function hasModuleRequest( moduleId ) {
