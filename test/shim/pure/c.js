@@ -1,5 +1,9 @@
-var shimPureC = {
+(function (global) {
+
+global.shimPureC = {
     name: 'shim pure c',
     ename: shimPureEOther.name,
-    dname: shimPureD.name
+    dname: global.shimPureD.name
 };
+
+})(this);
