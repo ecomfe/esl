@@ -318,10 +318,26 @@ input { font-size: 12px; width: 210px;}
         <td><input value="pureShim" type="button"></td>
         <td class="uncheck"></td>
     </tr>
-    <!--<tr>
-        <td><input value="mixedShim" type="button"></td>
+    <tr>
+        <td><input value="mixedSimpleShim" type="button"></td>
         <td class="uncheck"></td>
-    </tr-->
+    </tr>
+    <tr>
+        <td><input value="mixedSimpleShim_hasDeps" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mixedSimpleShim_hybirdDep" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mixedSimpleShim_indirectHybirdDep" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mixedComplexShim" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
     <tr>
         <th colspan="2" align="left">Conf urlArgs:</th>
     </tr>
@@ -368,7 +384,17 @@ require.config({
         shimPureC: 'shim/pure/c',
         shimPureD: 'shim/pure/d',
         shimPureE: 'shim/pure/e',
-        shimPureF: 'shim/pure/f'
+        shimPureF: 'shim/pure/f',
+        shimMixedSA: 'shim/mixed/sa',
+        shimMixedSB: 'shim/mixed/sb',
+        shimMixedSC: 'shim/mixed/sc',
+        shimMixedSD: 'shim/mixed/sd',
+        shimMixedSE: 'shim/mixed/se',
+        shimMixedSF: 'shim/mixed/sf',
+        shimMixedLib: 'shim/mixed/shimLib',
+        shimMixedHybird: 'shim/mixed/shimHybird',
+        shimMixedHybird2: 'shim/mixed/shimHybird2',
+        shimMixedUI: 'shim/mixed/shimUI'
     },
     shim: {
         shimPureIndex: {
@@ -390,9 +416,7 @@ require.config({
                 };
             }
         },
-        shimPureB: {
-            exports: 'shimPureBOther'
-        },
+        shimPureB: {exports: 'shimPureBOther'},
         shimPureC: ['shimPureD', 'shimPureE'],
         shimPureE: {
             deps: ['shimPureD', 'shimPureB'],
@@ -413,6 +437,30 @@ require.config({
                     name: shimPureFName
                 };
             }
+        },
+        shimMixedSB: {exports: 'shimMixedSBOther'},
+        shimMixedSA: {
+            deps: ['shimMixedSE', 'shimMixedSF'],
+            init: function (e, f) {
+                return {
+                    raw: shimMixedSA,
+                    e: e,
+                    f: f
+                };
+            }
+        },
+        shimMixedSD: {exports: 'shimMixedSDOther'},
+        shimMixedSE: {
+            deps: ['shimMixedSC', 'shimMixedSD'],
+            exports: 'shimMixedSE'
+        },
+        shimMixedSF: {
+            deps: ['shimMixedSC'],
+            exports: 'shimMixedSFOther'
+        },
+        shimMixedUI: {
+            exports: 'shimMixedUI',
+            deps: ['shimMixedLib']
         }
     }
 });
@@ -449,6 +497,95 @@ function pureShim(stateTd, callback) {
     });
 }
 
+function mixedSimpleShim(stateTd, callback) {
+    require(['shim/mixed/simpleIndex'], function (index) {
+        if (
+            index.name === 'shim mixed simpleIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mixedSimpleShim_hasDeps(stateTd, callback) {
+    require(['shim/mixed/simpleHasDepsIndex'], function (index) {
+        if (
+            index.name === 'shim mixed simpleHasDepsIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mixedSimpleShim_hybirdDep(stateTd, callback) {
+    require(['shim/mixed/simpleHybirdDepIndex'], function (index) {
+        if (
+            index.name === 'shim mixed simpleHybirdDepIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mixedSimpleShim_indirectHybirdDep(stateTd, callback) {
+    require(['shim/mixed/simpleIndirectHybirdDepIndex'], function (index) {
+        if (
+            index.name === 'shim mixed simpleIndirectHybirdDepIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mixedComplexShim(stateTd, callback) {
+    require(['shim/mixed/complexIndex'], function (index) {
+        if (
+            index.name === 'shim mixed complexIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
 </script>
 <script>
 
