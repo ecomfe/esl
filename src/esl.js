@@ -29,8 +29,9 @@ var esl;
      * 自动定义的模块表
      *
      * 模块define factory是用到时才执行，但是以下几种情况需要自动马上执行：
-     * 1. require( [moduleId], callback )
-     * 2. plugin module: require( 'plugin!resource' )
+     * 1. require([moduleId], callback)
+     * 2. plugin module: require('plugin!resource')
+     * 3. shim module
      *
      * @inner
      * @type {Object}
