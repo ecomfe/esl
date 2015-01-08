@@ -93,7 +93,7 @@ var esl;
         // #begin-ignore
         waitSeconds: 0,
         // #end-ignore
-        noRequests : {},
+        bundles    : {},
         urlArgs    : {}
     };
     /* eslint-enable key-spacing */
@@ -588,6 +588,7 @@ var esl;
                         each(mod.depRs, function (res) {
                             if (!res.absId && res.mod === pluginModuleId) {
                                 res.absId = normalize(res.id, id);
+                                autoDefineModules[res.absId] = 1;
                                 nativeRequire([res.absId], modAutoInvoke);
                             }
                         });
@@ -652,7 +653,6 @@ var esl;
                     }
 
                     mod.invokeFactory = null;
-                    delete autoDefineModules[id];
                 }
                 catch (ex) {
                     invoking = 0;
@@ -761,7 +761,8 @@ var esl;
         var listeners = modDefinedListeners[id] || [];
         var mod = modModules[id];
         mod.state = MODULE_DEFINED;
-
+        delete autoDefineModules[id];
+        
         var len = listeners.length;
         while (len--) {
             // 这里不做function类型的检测
@@ -795,10 +796,9 @@ var esl;
      * @param {string|Array} ids 模块名称或模块名称列表
      * @param {Function=} callback 获取模块完成时的回调函数
      * @param {string} baseId 基础id，用于当ids是relative id时的normalize
-     * @param {Object} noRequests 无需发起请求的模块集合
      * @return {Object} 模块对象
      */
-    function nativeRequire(ids, callback, baseId, noRequests) {
+    function nativeRequire(ids, callback, baseId) {
         // 根据 https://github.com/amdjs/amdjs-api/wiki/require
         // It MUST throw an error if the module has not
         // already been loaded and evaluated.
@@ -811,7 +811,6 @@ var esl;
             return modGetModuleExports(ids);
         }
 
-        noRequests = noRequests || {};
         var isCallbackCalled = 0;
         if (ids instanceof Array) {
             tryFinishRequire();
@@ -820,13 +819,10 @@ var esl;
                 each(ids, function (id) {
                     if (!(BUILDIN_MODULE[id] || modIs(id, MODULE_DEFINED))) {
                         modAddDefinedListener(id, tryFinishRequire);
-
-                        if (!noRequests[id]) {
-                            (id.indexOf('!') > 0
-                                ? loadResource
-                                : loadModule
-                            )(id, baseId);
-                        }
+                        (id.indexOf('!') > 0
+                            ? loadResource
+                            : loadModule
+                        )(id, baseId);
 
                         modAnalyse(id);
                     }
@@ -928,7 +924,13 @@ var esl;
             }
             
             if (isReady) {
-                createScript(moduleId, loaded);
+                var bundleModuleId = bundlesIndex[moduleId];
+                if (bundleModuleId) {
+                    nativeRequire([bundleModuleId]);
+                }
+                else {
+                    createScript(moduleId, loaded);
+                }
             }
             
             return isReady;
@@ -987,6 +989,12 @@ var esl;
             return;
         }
 
+        var bundleModuleId = bundlesIndex[pluginAndResource];
+        if (bundleModuleId) {
+            loadModule(bundleModuleId);
+            return;
+        }
+
         var idInfo = parseId(pluginAndResource);
         var resource = {
             id: pluginAndResource,
@@ -1038,7 +1046,7 @@ var esl;
             );
         }
 
-        load(modGetModuleExports(idInfo.mod));
+        nativeRequire([idInfo.mod], load);
     }
 
     /**
@@ -1109,20 +1117,20 @@ var esl;
     var mappingIdIndex;
 
     /**
+     * bundles内部索引
+     *
+     * @inner
+     * @type {Object}
+     */
+    var bundlesIndex;
+
+    /**
      * urlArgs内部索引
      *
      * @inner
      * @type {Array}
      */
     var urlArgsIndex;
-
-    /**
-     * noRequests内部索引
-     *
-     * @inner
-     * @type {Array}
-     */
-    var noRequestsIndex;
 
     /**
      * 将key为module id prefix的Object，生成数组形式的索引，并按照长度和字面排序
@@ -1182,22 +1190,14 @@ var esl;
 
         // create urlArgs index
         urlArgsIndex = createKVSortedIndex(requireConf.urlArgs, 1);
-
-        // create noRequests index
-        noRequestsIndex = createKVSortedIndex(requireConf.noRequests);
-        each(noRequestsIndex, function (item) {
-            var value = item.v;
-            var mapIndex = {};
-            item.v = mapIndex;
-
-            if (!(value instanceof Array)) {
-                value = [value];
-            }
-
-            each(value, function (meetId) {
-                mapIndex[meetId] = 1;
+    
+        // create bundles index
+        bundlesIndex = {};
+        for (var key in requireConf.bundles) {
+            each(requireConf.bundles[key], function (id) {
+                bundlesIndex[id] = key;
             });
-        });
+        }
     }
 
     /**
@@ -1294,7 +1294,6 @@ var esl;
             }
             else if (requireId instanceof Array) {
                 // 分析是否有resource，取出pluginModule先
-                var pluginModules = [];
                 var pureModules = [];
                 var normalizedIds = [];
 
@@ -1303,45 +1302,23 @@ var esl;
                     function (id, i) {
                         var idInfo = parseId(id);
                         var absId = normalize(idInfo.mod, baseId);
-                        pureModules.push(absId);
-                        autoDefineModules[absId] = 1;
+                        var resId = idInfo.res;
 
-                        if (idInfo.res) {
-                            pluginModules.push(absId);
-                            normalizedIds[i] = null;
+                        if (resId) {
+                            var trueResId = absId + '!' + resId;
+                            if (resId.indexOf('.') !== 0 && bundlesIndex[trueResId]) {
+                                absId = normalizedIds[i] = trueResId;
+                            }
+                            else { 
+                                normalizedIds[i] = null;
+                            }
                         }
                         else {
                             normalizedIds[i] = absId;
                         }
-                    }
-                );
-
-                var noRequestModules = {};
-                each(
-                    pureModules,
-                    function (id) {
-                        var meet;
-                        indexRetrieve(
-                            id,
-                            noRequestsIndex,
-                            function (value) {
-                                meet = value;
-                            }
-                        );
-
-                        if (meet) {
-                            if (meet['*']) {
-                                noRequestModules[id] = 1;
-                            }
-                            else {
-                                each(pureModules, function (meetId) {
-                                    if (meet[meetId]) {
-                                        noRequestModules[id] = 1;
-                                        return false;
-                                    }
-                                });
-                            }
-                        }
+                        
+                        pureModules.push(absId);
+                        autoDefineModules[absId] = 1;
                     }
                 );
 
@@ -1359,8 +1336,7 @@ var esl;
 
                         nativeRequire(normalizedIds, callback, baseId);
                     },
-                    baseId,
-                    noRequestModules
+                    baseId
                 );
             }
         }
@@ -1691,4 +1667,6 @@ var esl;
         // 所以这里就不判断了，直接写
         esl = globalRequire;
     }
+
+    window.modModules = modModules;
 })(this);
