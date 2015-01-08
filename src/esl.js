@@ -822,15 +822,10 @@ var esl;
                         modAddDefinedListener(id, tryFinishRequire);
 
                         if (!noRequests[id]) {
-                            if (requireConf.shim[id]) {
-                                loadShim(id);
-                            }
-                            else {
-                                (id.indexOf('!') > 0
-                                    ? loadResource
-                                    : loadModule
-                                )(id, baseId);
-                            }
+                            (id.indexOf('!') > 0
+                                ? loadResource
+                                : loadModule
+                            )(id, baseId);
                         }
 
                         modAnalyse(id);
@@ -868,81 +863,6 @@ var esl;
             }
         }
     }
-    /**
-     *
-     */
-    function loadShim(moduleId) {
-        autoDefineModules[moduleId] = 1;
-        if (loadingModules[moduleId] || modModules[moduleId]) {
-            return;
-        }
-
-        loadingModules[moduleId] = 1;
-        
-        var shimConf = requireConf.shim[moduleId] || {};
-        if (shimConf instanceof Array) {
-            shimConf = {
-                deps: shimConf
-            };
-
-            requireConf.shim[moduleId] = shimConf;
-        }
-
-        var deps = shimConf.deps || [];
-
-        function loaded() {
-            var exports;
-            if (typeof shimConf.init === 'function') {
-                exports = shimConf.init.apply(
-                    global, 
-                    modGetModulesExports(deps, BUILDIN_MODULE)
-                );
-            }
-            
-            if (exports == null && shimConf.exports) {
-                exports = global;
-                each(
-                    shimConf.exports.split('.'),
-                    function (prop) {
-                        exports = exports[prop];
-                        return !!exports;
-                    }
-                );
-            }
-
-            if (exports == null) {
-                exports = {};
-            }
-       
-            if (!modModules[moduleId]) {
-                globalDefine(moduleId, deps, exports);
-            }
-            
-            modAnalyse(moduleId);
-            modAutoInvoke();
-        }
-
-        function load() {
-            var isReady = 1;
-            each(deps, function (dep) {
-                isReady = !!modIs(dep, MODULE_DEFINED);
-                return isReady;
-            });
-            
-            if (isReady) {
-                createScript(moduleId, loaded);
-            }
-            
-            return isReady;
-        }
-
-        if (!load()) {
-            each(deps, function (dep) {
-                modAddDefinedListener(dep, load);
-                loadShim(dep);
-            });
-        }
-    }
 
     /**
      * 正在加载的模块列表
@@ -959,12 +879,60 @@ var esl;
      * @param {string} moduleId 模块标识
      */
     function loadModule(moduleId) {
+        // shim module 需要马上被定义
+        var shimConf = requireConf.shim[moduleId];
+        if (shimConf) {
+            autoDefineModules[moduleId] = 1;
+        }
+       
+        // 加载过的模块，就不要再继续了
         if (loadingModules[moduleId] || modModules[moduleId]) {
             return;
         }
-
         loadingModules[moduleId] = 1;
-        createScript(moduleId, loaded);
+        
+        // 初始化相关 shim 的配置
+        if (shimConf instanceof Array) {
+            requireConf.shim[moduleId] = shimConf = {
+                deps: shimConf
+            };
+        }
+        
+        var shimDeps = shimConf && (shimConf.deps || []);
+        
+        // 加载模块
+        // 对于 shim 模块，当其依赖未加载完时，不应该发起请求
+        // 否则由于网络往返的顺序不确定，可能其会比依赖先返回，引发错误
+        if (!load()) {
+            each(shimDeps, function (dep) {
+                modAddDefinedListener(dep, load);
+                if (!requireConf.shim[dep]) {
+                    requireConf.shim[dep] = {};
+                }
+                loadModule(dep);
+            });
+        }
+
+        /**
+         * 发送请求去加载模块
+         *
+         * @inner
+         */
+        function load() {
+            var isReady = 1;
+            if (shimConf) {
+                each(shimDeps, function (dep) {
+                    isReady = !!modIs(dep, MODULE_DEFINED);
+                    return isReady;
+                });
+            }
+            
+            if (isReady) {
+                createScript(moduleId, loaded);
+            }
+            
+            return isReady;
+        }
 
         /**
          * script标签加载完成的事件处理函数
@@ -972,7 +940,32 @@ var esl;
          * @inner
          */
         function loaded() {
-            completePreDefine(moduleId);
+            if (shimConf) {
+                var exports;
+                if (typeof shimConf.init === 'function') {
+                    exports = shimConf.init.apply(
+                        global, 
+                        modGetModulesExports(shimDeps, BUILDIN_MODULE)
+                    );
+                }
+                
+                if (exports == null && shimConf.exports) {
+                    exports = global;
+                    each(
+                        shimConf.exports.split('.'),
+                        function (prop) {
+                            exports = exports[prop];
+                            return !!exports;
+                        }
+                    );
+                }
+
+                globalDefine(moduleId, shimDeps, exports || {});
+            }
+            else { 
+                completePreDefine(moduleId);
+            }
+            
             /* eslint-disable guard-for-in */
             for (var key in autoDefineModules) {
                 modAnalyse(key);
