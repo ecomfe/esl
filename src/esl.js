@@ -30,7 +30,7 @@ var esl;
      *
      * 模块define factory是用到时才执行，但是以下几种情况需要自动马上执行：
      * 1. require([moduleId], callback)
-     * 2. plugin module: require('plugin!resource')
+     * 2. plugin module and plugin resource: require('plugin!resource')
      * 3. shim module
      *
      * @inner
@@ -1668,5 +1668,4 @@ var esl;
         esl = globalRequire;
     }
 
-    window.modModules = modModules;
 })(this);
