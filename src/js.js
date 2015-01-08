@@ -34,6 +34,7 @@ define('js', {
 
         var parent = document.getElementsByTagName('head')[0]
             || document.body;
-        parent.appendChild(script) && (parent = null);
+        parent.appendChild(script);
+        parent = null;
     }
 });
