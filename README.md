@@ -25,8 +25,6 @@ ESL is a browser-only, amd-compliant module loader. In modern web applications, 
 - 具有`更高的性能` (Higher performance)
 - 不支持在`非浏览器端`使用 (Browser only)
 - 依赖模块`用时定义` (Lazy define)
-- 支持`noRequests`指定无需请求的模块 (noRequests is supported)
-- 尚未支持以下配置项：`shim` (`shim` is not supported)
 
 
 ### ESL的配置项 (CONFIGURATION OPTIONS)
@@ -42,10 +40,10 @@ See [Configuration Options](doc/config.md)
 
 ```html
 <!-- compressed -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-8/esl.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-0/esl.js"></script>
 
 <!-- source -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-8/esl.source.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-0/esl.source.js"></script>
 ```
 
 [过往版本 (Old version)](CDN.md)
@@ -55,8 +53,7 @@ See [Configuration Options](doc/config.md)
 
 `uglifyjs -mc + gzip`
 
-- `esl 1.8.6 normal` 3.4k
-- `esl 1.8.6 min` 3.1k
+- `esl 2.0.0` 3.4k
 - `requirejs 2.1.15` 6.2k
 
 
