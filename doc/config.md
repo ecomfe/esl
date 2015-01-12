@@ -171,47 +171,38 @@ require.config( {
 更改urlArgs将导致相关模块的缓存全部失效。除非系统升级时对用户更新时效性要求非常高，不建议使用`urlArgs`配置项。
 
 
-### noRequests
+### bundles 
 
 `Object`
 
-非AMD标准配置项，指定哪些模块不需要发送网络请求。通常用于在生产环境下，为优化网络连接进行模块合并。
+非AMD标准配置项，指定模块捆绑打包的信息。通常用于在生产环境下，为优化网络连接进行模块合并。
 
-+ `key`为`string`。和`map`配置项一样，key的模块id为前缀匹配。
-+ `value`为`Array | string`，可指定一个或多个模块id，完整匹配，支持`*`表示所有模块。
++ `key`为`string`。指定打包合并的模块id。
++ `value`为`Array`。代表该模块下除了自身模块声明，还包含的其他模块声明。
 
-在同一个异步require的调用中，如果存在`value`指定的模块，则认为被`key`匹配的模块的声明被合并在`value`指定的模块中，被`key`匹配的模块不发送网络请求。
 
 ```javascript
 require.config( {
     // ...
 
-    noRequests: {
-        'report': 'main',
-        'zrender/shape': 'zrender'
+    bundles: {
+        'index': ['a', 'b'],
+        'biz': ['bizView', 'bizModel']
     }
 } );
 
-// report/daily 将发送请求
+// 将自动定位a模块url，向index模块对应url发送请求
 require( 
-    [ 'report/daily' ], 
-    function ( daily ) {
+    [ 'a' ], 
+    function ( a ) {
         // ......
     }
 );
 
-// report/weekly 将不发送请求
+// 将只发送biz模块的请求，不发送bizView模块的请求
 require( 
-    [ 'report/weekly', 'main' ], 
-    function ( weekly, main ) {
-        // ......
-    }
-);
-
-// zrender/shape/Text 将不发送请求
-require( 
-    [ 'zrender', 'zrender/shape/Text' ], 
-    function ( zrender, TextShape ) {
+    [ 'biz', 'bizView' ], 
+    function ( biz, view ) {
         // ......
     }
 );
