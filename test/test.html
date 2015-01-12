@@ -52,6 +52,19 @@ require.config({
         'amd/simpleDependency': 'amdsd'
     }
 });
+
+function hasModuleRequest( moduleId ) {
+    var scripts = document.getElementsByTagName( 'script' );
+    var len = scripts.length;
+
+    while ( len-- ) {
+        if ( scripts[ len ].getAttribute( 'data-require-id' ) == moduleId ) {
+            return true;
+        }
+    }
+
+    return false;
+}
 </script>
 
 <style>
@@ -225,6 +238,10 @@ input { font-size: 12px; width: 210px;}
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <td><input value="amd/combineplugin3" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <td><input value="multiResources" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
@@ -248,6 +265,10 @@ input { font-size: 12px; width: 210px;}
     </tr>
     <tr>
         <td><input value="defineInScript" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="defineInScriptLoadSoon" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
@@ -631,19 +652,6 @@ function complexBundles(stateTd, callback) {
         }
     );
 }
-
-function hasModuleRequest( moduleId ) {
-    var scripts = document.getElementsByTagName( 'script' );
-    var len = scripts.length;
-
-    while ( len-- ) {
-        if ( scripts[ len ].getAttribute( 'data-require-id' ) == moduleId ) {
-            return true;
-        }
-    }
-
-    return false;
-}
 </script>
 
 <script>
@@ -660,6 +668,44 @@ function defineInScript( stateTd, callback ) {
 
         callback();
     });
+}
+
+function defineInScriptLoadSoon(stateTd, callback) {
+    define('define-in-script-load-soon/index', ['require', './cat'],
+        function (require) {
+            var cat = require('./cat');
+            return {
+                name: 'define-in-script-load-soon/index',
+                check: function () {
+                    return cat.name === 'define-in-script-load-soon/cat'
+                }
+            };
+        }
+    );
+
+    setTimeout(function () {
+        
+        if (hasModuleRequest('define-in-script-load-soon/cat')) {
+            stateTd.className = 'fail';
+            callback();
+            return;
+        }
+
+        require(['define-in-script-load-soon/index'], function (index) {
+            if (hasModuleRequest('define-in-script-load-soon/cat')
+                && index.name === 'define-in-script-load-soon/index' 
+                && index.check()
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            callback();
+        })
+
+    }, 1);
 }
 
 function defineManyInScript( stateTd, callback ) {
