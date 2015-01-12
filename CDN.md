@@ -1,5 +1,20 @@
 ESL的每个版本，都会将压缩后的资源通过CDN发布，便于开发者直接引用。
 
+## 2.x
+
+从 **2.0.0** 版本开始，发布的CDN资源将不再包括精简版。
+
+### 2.0.0
+
+```html
+<!-- compressed -->
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-0/esl.js"></script>
+
+<!-- source -->
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-0/esl.source.js"></script>
+```
+
+## 1.x
 
 从 **1.6.6** 版本开始，发布的CDN资源将包括3个版本：
 
