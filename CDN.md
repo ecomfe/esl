@@ -33,7 +33,7 @@ ESL的每个版本，都会将压缩后的资源通过CDN发布，便于开发�
 
 <!-- source -->
 <script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-8/esl.source.js"></script>
-
+```
 
 ### 1.8.6
 
@@ -46,7 +46,7 @@ ESL的每个版本，都会将压缩后的资源通过CDN发布，便于开发�
 
 <!-- source -->
 <script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-6/esl.source.js"></script>
-
+```
 
 ### 1.8.4
 
@@ -59,7 +59,7 @@ ESL的每个版本，都会将压缩后的资源通过CDN发布，便于开发�
 
 <!-- source -->
 <script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/1-8-4/esl.source.js"></script>
-
+```
 
 ### 1.8.2
 
