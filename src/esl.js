@@ -13,6 +13,9 @@ var require;
 var esl;
 /* jshint ignore:end */
 
+/* eslint-disable guard-for-in */
+/* eslint-env amd:false */
+
 (function (global) {
     // "mod"开头的变量或函数为内部模块管理函数
     // 为提高压缩率，不使用function或object包装
@@ -45,8 +48,8 @@ var esl;
     var modAutoDefineModules = {};
 
     /**
-     * 标记模块自动进行定义 
-     * 
+     * 标记模块自动进行定义
+     *
      * @inner
      * @param {string} id 模块id
      */
@@ -247,11 +250,9 @@ var esl;
             }
         }
 
-        /* eslint-disable guard-for-in */
         for (var id in modAutoDefineModules) {
             checkError(id, 1);
         }
-        /* eslint-enable guard-for-in */
 
         if (hangModules.length || missModules.length) {
             throw new Error(
@@ -528,13 +529,11 @@ var esl;
      * @inner
      */
     function modAutoDefine() {
-        /* eslint-disable guard-for-in */
         for (var id in modAutoDefineModules) {
             modPrepare(id);
             modUpdatePreparedState(id);
             modTryInvokeFactory(id);
         }
-        /* eslint-enable guard-for-in */
     }
 
     /**
@@ -756,7 +755,7 @@ var esl;
         var mod = modModules[id];
         mod.state = MODULE_DEFINED;
         delete modAutoDefineModules[id];
-        
+
         var len = listeners.length;
         while (len--) {
             // 这里不做function类型的检测
@@ -840,7 +839,7 @@ var esl;
             return;
         }
         loadingModules[moduleId] = 1;
-        
+
         // 初始化相关 shim 的配置
         var shimConf = requireConf.shim[moduleId];
         if (shimConf instanceof Array) {
@@ -848,16 +847,16 @@ var esl;
                 deps: shimConf
             };
         }
-       
+
         // shim依赖的模块需要自动标识为shim
-        // 无论是纯正的shim模块还是hybird模块 
+        // 无论是纯正的shim模块还是hybird模块
         var shimDeps = shimConf && (shimConf.deps || []);
         if (shimDeps) {
             each(shimDeps, function (dep) {
                 if (!requireConf.shim[dep]) {
                     requireConf.shim[dep] = {};
                 }
-            });            
+            });
             actualGlobalRequire(shimDeps, load);
         }
         else {
@@ -870,8 +869,10 @@ var esl;
          * @inner
          */
         function load() {
+            /* eslint-disable no-use-before-define */
             var bundleModuleId = bundlesIndex[moduleId];
             createScript(bundleModuleId || moduleId, loaded);
+            /* eslint-enable no-use-before-define */
         }
 
         /**
@@ -884,11 +885,11 @@ var esl;
                 var exports;
                 if (typeof shimConf.init === 'function') {
                     exports = shimConf.init.apply(
-                        global, 
+                        global,
                         modGetModulesExports(shimDeps, BUILDIN_MODULE)
                     );
                 }
-                
+
                 if (exports == null && shimConf.exports) {
                     exports = global;
                     each(
@@ -902,10 +903,10 @@ var esl;
 
                 globalDefine(moduleId, shimDeps, exports || {});
             }
-            else { 
+            else {
                 modCompletePreDefine(moduleId);
             }
-            
+
             modAutoDefine();
         }
     }
@@ -922,11 +923,13 @@ var esl;
             return;
         }
 
+        /* eslint-disable no-use-before-define */
         var bundleModuleId = bundlesIndex[pluginAndResource];
         if (bundleModuleId) {
             loadModule(bundleModuleId);
             return;
         }
+        /* eslint-enable no-use-before-define */
 
         var idInfo = parseId(pluginAndResource);
         var resource = {
@@ -988,7 +991,6 @@ var esl;
      */
     globalRequire.config = function (conf) {
         if (conf) {
-            /* eslint-disable guard-for-in */
             for (var key in requireConf) {
                 var newValue = conf[key];
                 var oldValue = requireConf[key];
@@ -1015,7 +1017,6 @@ var esl;
                     }
                 }
             }
-            /* eslint-enable guard-for-in */
 
             createConfIndex();
         }
@@ -1122,13 +1123,16 @@ var esl;
 
         // create urlArgs index
         urlArgsIndex = createKVSortedIndex(requireConf.urlArgs, 1);
-    
+
         // create bundles index
         bundlesIndex = {};
+        /* eslint-disable no-use-before-define */
+        function bundlesIterator(id) {
+            bundlesIndex[id] = key;
+        }
+        /* eslint-enable no-use-before-define */
         for (var key in requireConf.bundles) {
-            each(requireConf.bundles[key], function (id) {
-                bundlesIndex[id] = key;
-            });
+            each(requireConf.bundles[key], bundlesIterator);
         }
     }
 
@@ -1215,7 +1219,7 @@ var esl;
      */
     function createLocalRequire(baseId) {
         var requiredCache = {};
-        
+
         function req(requireId, callback) {
             if (typeof requireId === 'string') {
                 if (!requiredCache[requireId]) {
@@ -1252,11 +1256,11 @@ var esl;
                             if (resId.indexOf('.') !== 0 && bundlesIndex[trueResId]) {
                                 absId = normalizedId = trueResId;
                             }
-                            else { 
+                            else {
                                 normalizedId = null;
                             }
                         }
-                        
+
                         normalizedIds[i] = normalizedId;
                         modFlagAutoDefine(absId);
                         pureModules.push(absId);
@@ -1311,7 +1315,7 @@ var esl;
         if (!id) {
             return '';
         }
-        
+
         baseId = baseId || '';
         var idInfo = parseId(id);
         if (!idInfo) {
@@ -1514,10 +1518,10 @@ var esl;
         script.src = toUrl(moduleId + '.js');
         script.async = true;
         if (script.readyState) {
-            script.onreadystatechange = innerOnload; 
+            script.onreadystatechange = innerOnload;
         }
         else {
-            script.onload = innerOnload; 
+            script.onload = innerOnload;
         }
 
         function innerOnload() {
@@ -1530,7 +1534,7 @@ var esl;
                 script = null;
 
                 onload();
-            } 
+            }
         }
         currentlyAddingScript = script;
 
@@ -1542,7 +1546,7 @@ var esl;
 
         currentlyAddingScript = null;
     }
- 
+
     /**
      * 创建id前缀匹配的正则对象
      *
