@@ -40,10 +40,10 @@ See [Configuration Options](doc/config.md)
 
 ```html
 <!-- compressed -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-0/esl.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-2/esl.js"></script>
 
 <!-- source -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-0/esl.source.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-2/esl.source.js"></script>
 ```
 
 [过往版本 (Old version)](CDN.md)
@@ -53,7 +53,7 @@ See [Configuration Options](doc/config.md)
 
 `uglifyjs -mc + gzip`
 
-- `esl 2.0.0` 3.4k
+- `esl 2.0.2` 3.4k
 - `requirejs 2.1.15` 6.2k
 
 
