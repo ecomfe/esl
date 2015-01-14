@@ -176,7 +176,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.0.0';
+    globalRequire.version = '2.0.2';
 
     /**
      * loader名称
@@ -645,12 +645,15 @@ var esl;
                     mod.invokeFactory = null;
                 }
                 catch (ex) {
-                    invoking = 0;
                     if (/^\[MODULE_MISS\]"([^"]+)/.test(ex.message)) {
                         // 出错，则说明在factory的运行中，该require的模块是需要的
                         // 所以把它加入强依赖中
                         var hardCirclurDep = mod.depMkv[RegExp.$1];
                         hardCirclurDep && (hardCirclurDep.hard = 1);
+                        
+                        // 如果是模块本身有问题导致的运行错误
+                        // 就不要把invoking置回去了，避免影响autoInvoke其他模块的初始化
+                        invoking = 0;
                         return;
                     }
 
@@ -751,11 +754,11 @@ var esl;
      * @param {string} id 模块标识
      */
     function modDefined(id) {
-        var listeners = modDefinedListeners[id] || [];
         var mod = modModules[id];
         mod.state = MODULE_DEFINED;
         delete modAutoDefineModules[id];
-
+        
+        var listeners = modDefinedListeners[id] || [];
         var len = listeners.length;
         while (len--) {
             // 这里不做function类型的检测
@@ -1280,8 +1283,11 @@ var esl;
                         });
                         /* jshint ignore:end */
 
-                        modAutoDefine();
+                        // modAutoDefine中，factory invoke可能发生错误
+                        // 从而导致nativeAsyncRequire没有被调用，callback没挂上
+                        // 所以nativeAsyncRequire要先运行
                         nativeAsyncRequire(normalizedIds, callback, baseId);
+                        modAutoDefine();
                     },
                     baseId
                 );
