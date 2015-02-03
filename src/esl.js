@@ -1131,7 +1131,7 @@ var esl;
         bundlesIndex = {};
         /* eslint-disable no-use-before-define */
         function bundlesIterator(id) {
-            bundlesIndex[id] = key;
+            bundlesIndex[resolvePackageId(id)] = key;
         }
         /* eslint-enable no-use-before-define */
         for (var key in requireConf.bundles) {
@@ -1329,17 +1329,8 @@ var esl;
         }
 
         var resourceId = idInfo.res;
-        var moduleId = relative2absolute(idInfo.mod, baseId);
-
-        each(
-            packagesIndex,
-            function (packageConf) {
-                var name = packageConf.name;
-                if (name === moduleId) {
-                    moduleId = name + '/' + packageConf.main;
-                    return false;
-                }
-            }
+        var moduleId = resolvePackageId(
+            relative2absolute(idInfo.mod, baseId)
         );
 
         // 根据config中的map配置进行module id mapping
@@ -1372,6 +1363,29 @@ var esl;
         }
 
         return moduleId;
+    }
+
+    /**
+     * 对id进行package解析
+     * 如果是package，则附加主模块id
+     *
+     * @inner
+     * @param {string} id 模块id
+     * @return {string} 解析后的id
+     */
+    function resolvePackageId(id) {
+        each(
+            packagesIndex,
+            function (packageConf) {
+                var name = packageConf.name;
+                if (name === id) {
+                    id = name + '/' + packageConf.main;
+                    return false;
+                }
+            }
+        );
+
+        return id;
     }
 
     /**

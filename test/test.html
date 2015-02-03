@@ -370,6 +370,10 @@ input { font-size: 12px; width: 210px;}
         <td><input value="complexBundles" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="packageBundles" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 </table>
 
 <script>
@@ -600,8 +604,17 @@ require.config({
             'bundles/complex/tpl',
             'bundles/complex/tpl!bundles/complex/tpl1',
             'bundles/complex/lib'
+        ],
+        'bundles/package/index': [
+            'bundlesPackage'
         ]
-    }
+    },
+    packages:[
+        {
+            name: 'bundlesPackage',
+            location: 'bundles/package'
+        }
+    ]
 });
 
 function simpleBundles(stateTd, callback) {
@@ -639,6 +652,29 @@ function complexBundles(stateTd, callback) {
                 && view1.check()
                 && index1.check()
                 && index1.name == 'bundles/complex/index1'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function packageBundles(stateTd, callback) {
+    require(['bundles/package/index', 'bundlesPackage'],
+        function (index, pkgMain) {
+            if (
+                !hasModuleRequest('bundlesPackage')
+                && !hasModuleRequest('bundlesPackage/main')
+                && hasModuleRequest('bundles/package/index')
+                && index.name == 'bundles/package/index'
+                && pkgMain.name == 'bundlesPackage/main'
             ) {
                 stateTd.className = 'pass';
             }
