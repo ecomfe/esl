@@ -279,6 +279,14 @@ input { font-size: 12px; width: 210px;}
         <td><input value="nonstandardId" type="button"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="complexProcess" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexProcessWithResource" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
 </table>
 <table>
     <tr>
@@ -586,6 +594,57 @@ function mixedComplexShim(stateTd, callback) {
         if ( typeof callback == 'function' ) {
             setTimeout( callback, 1 );
         }
+    });
+}
+</script>
+
+<script src="complexProcess/pure/combine.js"></script>
+<script src="complexProcess/mixed/combine.js"></script>
+<script>
+// complex process
+function complexProcess(stateTd, callback) {
+    require(['complexProcess/pure/text'], function (text) {
+        require(['complexProcess/pure/index', 'complexProcess/pure/empty'], function (index, empty) {
+            if (
+                index.name === 'complexProcess/pure/index'
+                && index.text.name === 'complexProcess/pure/text'
+                && index.bar.name === 'complexProcess/pure/bar'
+                && index.text === index.bar.text
+                && empty.name === 'complexProcess/pure/empty'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+            
+            if (callback) {
+                callback();
+            }
+        });
+    });
+}
+
+function complexProcessWithResource(stateTd, callback) {
+    require(['complexProcess/mixed/text!x'], function (xRes) {
+        require(['complexProcess/mixed/index', 'complexProcess/mixed/empty'], function (index, empty) {
+            if (
+                index.name === 'complexProcess/mixed/index'
+                && index.res === 'complexProcess/mixed/text!x'
+                && index.bar.name === 'complexProcess/mixed/bar'
+                && index.res === index.bar.res
+                && empty.name === 'complexProcess/mixed/empty'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+            
+            if (callback) {
+                callback();
+            }
+        });
     });
 }
 </script>
