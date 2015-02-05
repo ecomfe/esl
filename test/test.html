@@ -284,7 +284,11 @@ input { font-size: 12px; width: 210px;}
         <td class="uncheck"></td>
     </tr>
     <tr>
-        <td><input value="complexProcessWithResource" type="button"></td>
+        <td><input value="complexProcessWithResource1" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexProcessWithResource2" type="button"></td>
         <td class="uncheck"></td>
     </tr>
 </table>
@@ -625,7 +629,28 @@ function complexProcess(stateTd, callback) {
     });
 }
 
-function complexProcessWithResource(stateTd, callback) {
+function complexProcessWithResource1(stateTd, callback) {
+    require(['complexProcess/simpleMixed/text!x'], function (xRes) {
+        require(['complexProcess/simpleMixed/index', 'complexProcess/simpleMixed/empty'], function (index, empty) {
+            if (
+                index.name === 'complexProcess/simpleMixed/index'
+                && index.res === 'complexProcess/simpleMixed/text!x'
+                && empty.name === 'complexProcess/simpleMixed/empty'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+            
+            if (callback) {
+                callback();
+            }
+        });
+    });
+}
+
+function complexProcessWithResource2(stateTd, callback) {
     require(['complexProcess/mixed/text!x'], function (xRes) {
         require(['complexProcess/mixed/index', 'complexProcess/mixed/empty'], function (index, empty) {
             if (
