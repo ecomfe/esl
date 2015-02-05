@@ -176,7 +176,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.0.2';
+    globalRequire.version = '2.0.4';
 
     /**
      * loader名称
@@ -577,7 +577,7 @@ var esl;
             );
             /* jshint ignore:end */
 
-            if (prepared) {
+            if (prepared && !modIs(id, MODULE_PREPARED)) {
                 mod.state = MODULE_PREPARED;
             }
 
