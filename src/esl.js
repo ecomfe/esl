@@ -650,7 +650,7 @@ var esl;
                         // 所以把它加入强依赖中
                         var hardCirclurDep = mod.depMkv[RegExp.$1];
                         hardCirclurDep && (hardCirclurDep.hard = 1);
-                        
+
                         // 如果是模块本身有问题导致的运行错误
                         // 就不要把invoking置回去了，避免影响autoInvoke其他模块的初始化
                         invoking = 0;
@@ -757,7 +757,7 @@ var esl;
         var mod = modModules[id];
         mod.state = MODULE_DEFINED;
         delete modAutoDefineModules[id];
-        
+
         var listeners = modDefinedListeners[id] || [];
         var len = listeners.length;
         while (len--) {
