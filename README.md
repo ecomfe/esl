@@ -25,8 +25,9 @@ ESL is a browser-only, amd-compliant module loader. In modern web applications, 
 
 ### ESL vs RequireJS
 
-- 具有`更小的体积` (Smaller) 
-- 具有`更高的性能` (Higher performance)
+- 体积更小 (Smaller) 
+- 性能更高 (Higher performance)
+- 更健壮 (More Robustness)
 - 不支持在`非浏览器端`使用 (Browser only)
 - 依赖模块`用时定义` (Lazy define)
 
