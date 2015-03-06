@@ -444,7 +444,7 @@ var esl;
             // SHOULD NOT scan for dependencies within the factory function.
             !mod.depsDec && factory.toString()
                 .replace(/(\/\*([\s\S]*?)\*\/|([^:]|^)\/\/(.*)$)/mg, '')
-                .replace(/require\(\s*(['"'])([^'"]+)\1\s*\)/g,
+                .replace(/require\(\s*(['"])([^'"]+)\1\s*\)/g,
                     function ($0, $1, depId) {
                         deps.push(depId);
                     }
