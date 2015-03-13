@@ -280,6 +280,10 @@ input { font-size: 12px; width: 210px;}
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <td><input value="mapAndPackage" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <td><input value="complexProcess" type="button"></td>
         <td class="uncheck"></td>
     </tr>
@@ -413,7 +417,7 @@ require.config({
     shim: {
         shimPureIndex: {
             deps: ['shimPureA', 'shimPureB'],
-            exports: 'shimPureIndex.exports' 
+            exports: 'shimPureIndex.exports'
         },
         shimPureA: {
             exports: 'shimPureA',
@@ -621,7 +625,7 @@ function complexProcess(stateTd, callback) {
             else {
                 stateTd.className = 'fail';
             }
-            
+
             if (callback) {
                 callback();
             }
@@ -642,7 +646,7 @@ function complexProcessWithResource1(stateTd, callback) {
             else {
                 stateTd.className = 'fail';
             }
-            
+
             if (callback) {
                 callback();
             }
@@ -665,7 +669,7 @@ function complexProcessWithResource2(stateTd, callback) {
             else {
                 stateTd.className = 'fail';
             }
-            
+
             if (callback) {
                 callback();
             }
@@ -675,10 +679,51 @@ function complexProcessWithResource2(stateTd, callback) {
 </script>
 
 <script>
+require.config({
+    baseUrl: '.',
+    packages: [
+        {
+            name: 'map-and-pkg-lang-0.1',
+            location: 'map-and-pkg/lang/0.1',
+        },
+        {
+            name: 'map-and-pkg-lang-0.2',
+            location: 'map-and-pkg/lang/0.2',
+        }
+    ],
+    map: {
+        'map-and-pkg/foo': {
+            'map-and-pkg/lang': 'map-and-pkg-lang-0.1'
+        },
+        'map-and-pkg/bar': {
+            'map-and-pkg/lang': 'map-and-pkg-lang-0.2'
+        }
+    }
+});
+
+function mapAndPackage(stateTd, callback) {
+    require(['map-and-pkg/foo', 'map-and-pkg/bar'], function (foo, bar) {
+        console.log(foo.lang);
+        console.log(bar.lang)
+        if (foo.lang.name === 'lang-0.1' && bar.lang.name === 'lang-0.2') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+</script>
+
+<script>
 // bundles test
 require.config({
     bundles: {
-        'bundles/simple/index': [ 
+        'bundles/simple/index': [
             'bundles/simple/cat',
             'bundles/simple/plugin!resource'
         ],
@@ -804,7 +849,7 @@ function defineInScriptLoadSoon(stateTd, callback) {
     );
 
     setTimeout(function () {
-        
+
         if (hasModuleRequest('define-in-script-load-soon/cat')) {
             stateTd.className = 'fail';
             callback();
@@ -813,7 +858,7 @@ function defineInScriptLoadSoon(stateTd, callback) {
 
         require(['define-in-script-load-soon/index'], function (index) {
             if (hasModuleRequest('define-in-script-load-soon/cat')
-                && index.name === 'define-in-script-load-soon/index' 
+                && index.name === 'define-in-script-load-soon/index'
                 && index.check()
             ) {
                 stateTd.className = 'pass';
