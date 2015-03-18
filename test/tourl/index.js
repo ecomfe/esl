@@ -8,7 +8,9 @@ define( function ( require ) {
 
 
     assert_toUrl( 'local:pkg-main', require.toUrl( 'pkgsetmain' ) );
+    assert_toUrl( 'local:pkg-main.js', require.toUrl( 'pkgsetmain.js' ) );
     assert_toUrl( 'local:pkg-module', require.toUrl( '../pkgsetmain/mod' ) );
+    assert_toUrl( 'local:pkg-module.js', require.toUrl( '../pkgsetmain/mod.js' ) );
 
     assert_toUrl( 'local:relative-id', require.toUrl( './relative' ) );
     assert_toUrl( 'local:map', require.toUrl( '../simple' ) );
