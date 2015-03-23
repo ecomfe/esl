@@ -285,6 +285,14 @@ input { font-size: 12px; width: 210px;}
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <td><input value="mapAndPackage1" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mapAndPackage2" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <td><input value="complexProcess" type="button"></td>
         <td class="uncheck"></td>
     </tr>
@@ -690,6 +698,10 @@ require.config({
         {
             name: 'map-and-pkg-lang-0.2',
             location: 'map-and-pkg/lang/0.2',
+        },
+        {
+            name: 'map-and-pkg-lib',
+            location: 'map-and-pkg/lib-pkg'
         }
     ],
     map: {
@@ -698,15 +710,51 @@ require.config({
         },
         'map-and-pkg/bar': {
             'map-and-pkg/lang': 'map-and-pkg-lang-0.2'
+        },
+        'map-and-pkg/index': {
+            'map-and-pkg-lib': 'map-and-pkg/lib'
+        },
+        'map-and-pkg/index2': {
+            'map-and-pkg/lib': 'map-and-pkg-lib'
         }
     }
 });
 
+
+
 function mapAndPackage(stateTd, callback) {
     require(['map-and-pkg/foo', 'map-and-pkg/bar'], function (foo, bar) {
-        console.log(foo.lang);
-        console.log(bar.lang)
         if (foo.lang.name === 'lang-0.1' && bar.lang.name === 'lang-0.2') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mapAndPackage1(stateTd, callback) {
+    require(['map-and-pkg/index'], function (index) {
+        if (index.lib.name === 'map-and-pkg/lib') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mapAndPackage2(stateTd, callback) {
+    require(['map-and-pkg/index2'], function (index) {
+        if (index.lib.name === 'map-and-pkg-lib/main') {
             stateTd.className = 'pass';
         }
         else {
