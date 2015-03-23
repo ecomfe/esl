@@ -6,7 +6,6 @@
 
 <script src="impl/esl/esl.js"></script>
 <!--script src="impl/requirejs/require.js"></script-->
-<!--script src="impl/almond/almond.js"></script-->
 <!--script src="impl/needs/needs.js"></script-->
 <!--script src="impl/lsjs/lsjs.js"></script-->
 <script>
@@ -282,14 +281,6 @@ input { font-size: 12px; width: 210px;}
     </tr>
     <tr>
         <td><input value="mapAndPackage" type="button"></td>
-        <td class="uncheck"></td>
-    </tr>
-    <tr>
-        <td><input value="mapAndPackage1" type="button"></td>
-        <td class="uncheck"></td>
-    </tr>
-    <tr>
-        <td><input value="mapAndPackage2" type="button"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
@@ -716,55 +707,41 @@ require.config({
         },
         'map-and-pkg/index2': {
             'map-and-pkg/lib': 'map-and-pkg-lib'
+        },
+        'map-and-pkg/index3': {
+            'map-and-pkg-lib/main': 'map-and-pkg/lib'
         }
     }
 });
 
 
-
 function mapAndPackage(stateTd, callback) {
-    require(['map-and-pkg/foo', 'map-and-pkg/bar'], function (foo, bar) {
-        if (foo.lang.name === 'lang-0.1' && bar.lang.name === 'lang-0.2') {
-            stateTd.className = 'pass';
-        }
-        else {
-            stateTd.className = 'fail';
-        }
+    require(
+        [
+            'map-and-pkg/foo', // normal module -> package main
+            'map-and-pkg/bar', // normal module -> package main
+            'map-and-pkg/index',  // package main -> normal module
+            'map-and-pkg/index2', // normal module -> package main
+            'map-and-pkg/index3'  // package dont trigger main map
+        ],
+        function (foo, bar, index, index2, index3) {
+            if (foo.lang.name === 'lang-0.1'
+                && bar.lang.name === 'lang-0.2'
+                && index.lib.name === 'map-and-pkg/lib'
+                && index2.lib.name === 'map-and-pkg-lib/main'
+                && index3.lib.name === 'map-and-pkg-lib/main'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
 
-        if ( typeof callback == 'function' ) {
-            setTimeout( callback, 1 );
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
         }
-    });
-}
-
-function mapAndPackage1(stateTd, callback) {
-    require(['map-and-pkg/index'], function (index) {
-        if (index.lib.name === 'map-and-pkg/lib') {
-            stateTd.className = 'pass';
-        }
-        else {
-            stateTd.className = 'fail';
-        }
-
-        if ( typeof callback == 'function' ) {
-            setTimeout( callback, 1 );
-        }
-    });
-}
-
-function mapAndPackage2(stateTd, callback) {
-    require(['map-and-pkg/index2'], function (index) {
-        if (index.lib.name === 'map-and-pkg-lib/main') {
-            stateTd.className = 'pass';
-        }
-        else {
-            stateTd.className = 'fail';
-        }
-
-        if ( typeof callback == 'function' ) {
-            setTimeout( callback, 1 );
-        }
-    });
+    );
 }
 </script>
 
@@ -1346,8 +1323,6 @@ function urlArgs( stateTd, callback ) {
     }
 
 })();
-
-
 </script>
 </body>
 </html>
