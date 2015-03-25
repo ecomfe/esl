@@ -1,4 +1,11 @@
 
+2.0.6
+-------
+
++ bug修复：依赖被map到package的主模块时，模块加载失败。
++ bug修复：require.toUrl对package.suffix参数的返回值错误。
+
+
 2.0.4
 -------
 
