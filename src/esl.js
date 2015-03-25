@@ -176,7 +176,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.0.4';
+    globalRequire.version = '2.0.6';
 
     /**
      * loader名称
@@ -1163,7 +1163,7 @@ var esl;
      * @param {string} source 源字符串
      * @return {string} url
      */
-    function toUrl(source) {
+    function toUrl(source, baseId) {
         // 分离 模块标识 和 .extension
         var extReg = /(\.[a-z0-9]+)$/i;
         var queryReg = /(\?[^#]*)$/;
@@ -1179,6 +1179,10 @@ var esl;
         if (extReg.test(source)) {
             extname = RegExp.$1;
             id = source.replace(extReg, '');
+        }
+
+        if (baseId != null) {
+            id = normalize(id, baseId);
         }
 
         var url = id;
@@ -1303,7 +1307,7 @@ var esl;
          * @return {string} url
          */
         req.toUrl = function (id) {
-            return toUrl(normalize(id, baseId));
+            return toUrl(id, baseId || '');
         };
 
         return req;
@@ -1329,9 +1333,7 @@ var esl;
         }
 
         var resourceId = idInfo.res;
-        var moduleId = resolvePackageId(
-            relative2absolute(idInfo.mod, baseId)
-        );
+        var moduleId = relative2absolute(idInfo.mod, baseId);
 
         // 根据config中的map配置进行module id mapping
         indexRetrieve(
@@ -1347,6 +1349,8 @@ var esl;
                 );
             }
         );
+
+        moduleId = resolvePackageId(moduleId);
 
         if (resourceId) {
             var mod = modIs(moduleId, MODULE_DEFINED) && actualGlobalRequire(moduleId);
