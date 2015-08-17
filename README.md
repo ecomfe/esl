@@ -7,8 +7,8 @@ ESL is a browser-only, amd-compliant module loader. In modern web applications, 
 
 通过`右键另存`的方式下载ESL (Download by `Save As`):
 
-- [压缩代码 (Compressed)](http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-4/esl.js)
-- [源码 (Source)](http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-4/esl.source.js)
+- [压缩代码 (Compressed)](http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-6/esl.js)
+- [源码 (Source)](http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-6/esl.source.js)
 
 ### 了解AMD (About AMD)
 
