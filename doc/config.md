@@ -84,13 +84,15 @@ require.config( {
 ```javascript
 require.config( {
     // ...
-    
+
     // some/newmodule模块中，require('foo')实际引用到的是foo2模块
     // some/newmodule为前缀匹配，some/newmodule/index对foo的引用行为也将引用foo2
-    'some/newmodule': {
-        'foo': 'foo2',
-        'foo/bar': 'foo1.2/bar3'
-    }
+    'map' : {
+        'some/newmodule': {
+            'foo': 'foo2',
+             'foo/bar': 'foo1.2/bar3'
+        }
+   }
 } );
 ```
 
