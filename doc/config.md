@@ -4,14 +4,14 @@
 通过`require.config( Object )`，可以对esl进行配置。通常我们在使用前都需要进行esl的配置。
 
 ```javascript
-require.config( {
+require.config({
     baseUrl: './src',
     paths: {
         css: './src/plugin/css'
     }
-} );
+});
 
-require( [ 'common/main' ] );
+require(['common/main']);
 ```
 
 
@@ -34,13 +34,13 @@ ESL的配置项
 配置项中，每项的key为模块id，value为指定路径。key的模块id为前缀匹配。
 
 ```javascript
-require.config( {
+require.config({
     baseUrl: './src',
     paths: {
         lib: 'http://lib.com/libpath', // 引用外部模块可以用paths配置
         plugin: './plugin' // 前缀匹配，plugin/css和plugin/js等模块都将到 "./plugin"下查找
     }
-} );
+});
 ```
 
 ### packages
@@ -55,7 +55,7 @@ require.config( {
 + `string`，其中第一个segment作为`name`，整个字符串的值作为`location`，`main`采用默认值main。
 
 ```javascript
-require.config( {
+require.config({
     // ...
 
     packages: [
@@ -69,7 +69,7 @@ require.config( {
             main: 'echarts'
         }
     ]
-} );
+});
 ```
 
 
@@ -82,7 +82,7 @@ require.config( {
 和`paths`配置项一样，key的模块id为前缀匹配。
 
 ```javascript
-require.config( {
+require.config({
     // ...
 
     // some/newmodule模块中，require('foo')实际引用到的是foo2模块
@@ -90,10 +90,10 @@ require.config( {
     'map' : {
         'some/newmodule': {
             'foo': 'foo2',
-             'foo/bar': 'foo1.2/bar3'
+            'foo/bar': 'foo1.2/bar3'
         }
    }
-} );
+});
 ```
 
 
@@ -105,7 +105,7 @@ require.config( {
 [AMD](https://github.com/amdjs/amdjs-api/wiki/Common-Config) 标准配置项。通过config配置可以为模块传递需要动态变更的参数，比如功能开关。
 
 ```javascript
-require.config( {
+require.config({
     // ...
 
     config: {
@@ -113,15 +113,17 @@ require.config( {
             displayMode: 'autohide'
         }
     }
-} );
+});
 ```
 
 模块可以通过`module.config()`获得其自身配置。
 
 ```javascript
-define( function ( require, exports, module ) {
-    var conf = module.config();
-} );
+define(
+    function (require, exports, module) {
+        var conf = module.config();
+    }
+);
 ```
 
 
@@ -132,13 +134,13 @@ define( function ( require, exports, module ) {
 非AMD标准配置项，指定等待的秒数。超过等待时间后，如果有模块未成功加载或初始化，将抛出 *MODULE_TIMEOUT* 异常错误信息。
 
 ```javascript
-require.config( {
+require.config({
     // ...
 
     waitSeconds: 5
-} );
+});
 
-require( [ 'noexist' ] );
+require(['noexist']);
 ```
 
 
@@ -152,21 +154,21 @@ require( [ 'noexist' ] );
 + `Object`: 为相应模块指定参数字符串。与`paths`、`map`配置项相同，key为前缀匹配。
 
 ```javascript
-require.config( {
+require.config({
     // ...
 
     urlArgs: 'v=2.0.0' // 指定所有模块的路径后参数
-} );
+});
 ```
 
 ```javascript
-require.config( {
+require.config({
     // ...
 
     urlArgs: {
         common: '1.2.0' // 为common和common下的子模块指定路径后参数
     }
-} );
+});
 ```
 
 
@@ -184,14 +186,14 @@ require.config( {
 
 
 ```javascript
-require.config( {
+require.config({
     // ...
 
     bundles: {
         'index': ['a', 'b'],
         'biz': ['bizView', 'bizModel']
     }
-} );
+});
 
 // 将自动定位a模块url，向index模块对应url发送请求
 require( 
