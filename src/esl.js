@@ -1405,28 +1405,27 @@ var esl;
             return id;
         }
 
-        var basePath = baseId.split('/').slice(0, -1); // remove last
-        var parts = basePath.concat(id.split('/'));
-
+        var segs = baseId.split('/').slice(0, -1).concat(id.split('/'));
         var res = [];
-        for (var i = 0; i < parts.length; i++) {
-            var p = parts[i];
+        for (var i = 0; i < segs.length; i++) {
+            var seg = segs[i];
 
-            // ignore empty parts
-            if (!p || p === '.') {
-                continue;
-            }
-
-            if (p === '..') {
-                if (res.length && res[res.length - 1] !== '..') {
-                    res.pop();
-                } else { // allow above root
-                    res.push('..');
-                }
-            } else {
-                res.push(p);
+            switch (seg) {
+                case '.':
+                    break;
+                case '..':
+                    if (res.length && res[res.length - 1] !== '..') {
+                        res.pop();
+                    }
+                    else { // allow above root
+                        res.push(seg);
+                    }
+                    break;
+                default:
+                    seg && res.push(seg);
             }
         }
+
         return res.join('/');
     }
 
