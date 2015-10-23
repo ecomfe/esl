@@ -7,8 +7,8 @@ ESL is a browser-only, amd-compliant module loader. In modern web applications, 
 
 通过`右键另存`的方式下载ESL (Download by `Save As`):
 
-- [压缩代码 (Compressed)](http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-6/esl.js)
-- [源码 (Source)](http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-6/esl.source.js)
+- [压缩代码 (Compressed)](http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-8/esl.js)
+- [源码 (Source)](http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-8/esl.source.js)
 
 ### 了解AMD (About AMD)
 
@@ -45,13 +45,13 @@ See [Configuration Options](doc/config.md)
 
 ```html
 <!-- compressed -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-6/esl.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-8/esl.js"></script>
 
 <!-- compressed(https) -->
-<script src="https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/ecom/esl/2-0-6/esl.js"></script>
+<script src="https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/ecom/esl/2-0-8/esl.js"></script>
 
 <!-- source -->
-<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-6/esl.source.js"></script>
+<script src="http://s1.bdstatic.com/r/www/cache/ecom/esl/2-0-8/esl.source.js"></script>
 ```
 
 [过往版本 (Old version)](CDN.md)
@@ -61,7 +61,7 @@ See [Configuration Options](doc/config.md)
 
 `uglifyjs -mc + gzip`
 
-- `esl 2.0.6` 3.4k
+- `esl 2.0.8` 3.5k
 - `requirejs 2.1.15` 6.2k
 
 
