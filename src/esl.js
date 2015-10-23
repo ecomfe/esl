@@ -1477,6 +1477,59 @@ var esl;
         return list;
     }
 
+
+
+    /**
+     * 创建id前缀匹配的正则对象
+     *
+     * @inner
+     * @param {string} prefix id前缀
+     * @return {RegExp} 前缀匹配的正则对象
+     */
+    function createPrefixRegexp(prefix) {
+        return new RegExp('^' + prefix + '(/|$)');
+    }
+
+    /**
+     * 循环遍历数组集合
+     *
+     * @inner
+     * @param {Array} source 数组源
+     * @param {function(Array,Number):boolean} iterator 遍历函数
+     */
+    function each(source, iterator) {
+        if (source instanceof Array) {
+            for (var i = 0, len = source.length; i < len; i++) {
+                if (iterator(source[i], i) === false) {
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * 根据元素的k或name项进行数组字符数逆序的排序函数
+     *
+     * @inner
+     * @param {Object} a 要比较的对象a
+     * @param {Object} b 要比较的对象b
+     * @return {number} 比较结果
+     */
+    function descSorterByKOrName(a, b) {
+        var aValue = a.k || a.name;
+        var bValue = b.k || b.name;
+
+        if (bValue === '*') {
+            return -1;
+        }
+
+        if (aValue === '*') {
+            return 1;
+        }
+
+        return bValue.length - aValue.length;
+    }
+
     // 感谢requirejs，通过currentlyAddingScript兼容老旧ie
     //
     // For some cache cases in IE 6-8, the script executes before the end
@@ -1561,57 +1614,6 @@ var esl;
         currentlyAddingScript = null;
     }
 
-    /**
-     * 创建id前缀匹配的正则对象
-     *
-     * @inner
-     * @param {string} prefix id前缀
-     * @return {RegExp} 前缀匹配的正则对象
-     */
-    function createPrefixRegexp(prefix) {
-        return new RegExp('^' + prefix + '(/|$)');
-    }
-
-    /**
-     * 循环遍历数组集合
-     *
-     * @inner
-     * @param {Array} source 数组源
-     * @param {function(Array,Number):boolean} iterator 遍历函数
-     */
-    function each(source, iterator) {
-        if (source instanceof Array) {
-            for (var i = 0, len = source.length; i < len; i++) {
-                if (iterator(source[i], i) === false) {
-                    break;
-                }
-            }
-        }
-    }
-
-    /**
-     * 根据元素的k或name项进行数组字符数逆序的排序函数
-     *
-     * @inner
-     * @param {Object} a 要比较的对象a
-     * @param {Object} b 要比较的对象b
-     * @return {number} 比较结果
-     */
-    function descSorterByKOrName(a, b) {
-        var aValue = a.k || a.name;
-        var bValue = b.k || b.name;
-
-        if (bValue === '*') {
-            return -1;
-        }
-
-        if (aValue === '*') {
-            return 1;
-        }
-
-        return bValue.length - aValue.length;
-    }
-
     // 暴露全局对象
     if (!define) {
         define = globalDefine;
@@ -1625,4 +1627,22 @@ var esl;
         // 所以这里就不判断了，直接写
         esl = globalRequire;
     }
+
+    // data-main
+    var mainModule;
+    (function () {
+        var scripts = document.getElementsByTagName('script');
+        var len = scripts.length;
+
+        while (len--) {
+            var script = scripts[len];
+            if ((mainModule = script.getAttribute('data-main'))) {
+                break;
+            }
+        }
+    })();
+
+    mainModule && setTimeout(function () {
+        globalRequire([mainModule]);
+    }, 4);
 })(this);
