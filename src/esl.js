@@ -89,6 +89,15 @@ var esl;
     var waitTimeout;
     // #end-ignore
 
+    /**
+     * js 后缀名正则
+     *
+     * @inner
+     * @type {RegExp}
+     */
+    var jsSuffixRegExp = /\.js$/i;
+
+
     /* eslint-disable fecs-key-spacing */
     /* eslint-disable key-spacing */
     /**
@@ -1117,7 +1126,7 @@ var esl;
                 }
 
                 pkg.location = pkg.location || pkg.name;
-                pkg.main = (pkg.main || 'main').replace(/\.js$/i, '');
+                pkg.main = (pkg.main || 'main').replace(jsSuffixRegExp, '');
                 pkg.reg = createPrefixRegexp(pkg.name);
                 packagesIndex.push(pkg);
             }
@@ -1643,6 +1652,7 @@ var esl;
     })();
 
     mainModule && setTimeout(function () {
+        mainModule = mainModule.replace(jsSuffixRegExp, '');
         globalRequire([mainModule]);
     }, 4);
 })(this);

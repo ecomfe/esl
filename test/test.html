@@ -85,10 +85,19 @@ function hasModuleRequest( moduleId ) {
 
 table { width: 250px; float:left; margin-right: 10px;}
 input { font-size: 12px; width: 210px;}
+
+.icon { display: inline-block; width: 12px; height: 12px; }
+#test-result { margin: 20px 0; display: none; }
+#complete { margin-left: 20px; }
 </style>
 </head>
 
 <body>
+<div id="test-result">
+    <span class="pass icon"></span> passed: <span id="passed">0</span>
+    <span class="fail icon"></span> failed: <span id="failed">0</span>
+    <span id="complete"></span>
+</div>
 <table>
     <tr>
         <th colspan="2" align="left">AMD:</th>
@@ -1266,21 +1275,44 @@ function urlArgs( stateTd, callback ) {
         return td;
     }
 
+    var result = {
+        passed: 0,
+        failed: 0
+    };
+
     function checking( target, callback ) {
         var stateTd = getStateTd( target );
         stateTd.className = 'checking';
         var value = target.value;
 
+        function checked () {
+
+            var state = stateTd.className.indexOf('pass') > -1
+                ? 'passed'
+                : 'failed';
+
+            console.log(value, state);
+
+            result[state]++;
+
+            callback();
+        }
+
         if ( window[ value ] ) {
-            window[ value ]( stateTd, callback );
+            window[ value ]( stateTd, checked );
         }
         else {
             var moduleId = target.value + '/index';
 
             require( [ moduleId ], function ( module ) {
-                checkNormalModule( moduleId, stateTd, module, callback );
+                checkNormalModule( moduleId, stateTd, module, checked );
             } );
         }
+    }
+
+    function addResult(id, num) {
+        var el = document.getElementById(id);
+        el.innerText = num;
     }
 
 
@@ -1308,12 +1340,26 @@ function urlArgs( stateTd, callback ) {
             }
         }
         else {
-            alert( (new Date) - now )
+            var cost = (new Date) - now;
+            document.getElementById('complete').innerText = ['completed',
+                'cost',
+                cost,
+                'ms.'
+            ].join(' ');
+
+            addResult('passed', result.passed);
+            addResult('failed', result.failed);
+
+            console.log(['\npassed:', result.passed, 'failed:', result.failed].join(' '));
+
+
         }
     }
 
     var autostartIgnore;
     if ( /[\?|]autostart(-([a-z]+))?/.test( location.search ) ) {
+        document.getElementById('test-result').style.display = 'block';
+
         var now = new Date;
         autostartIgnore = RegExp.$2;
         setTimeout(function () {

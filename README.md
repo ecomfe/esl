@@ -1,5 +1,8 @@
 ESL (Enterprise Standard Loader)
 =====================
+[![Build Status][travis-image]][travis-url]
+[travis-url]: https://travis-ci.org/ecomfe/esl
+[travis-image]: http://img.shields.io/travis/ecomfe/esl.svg
 
 ESL是一个`浏览器端`、`符合AMD`的标准加载器，适合用于现代Web浏览器端应用的入口与模块管理。
 
