@@ -7,11 +7,13 @@
  *         Firede(firede@firede.us)
  */
 
+/* eslint-disable no-unused-vars */
 /* jshint ignore:start */
 var define;
 var require;
 var esl;
 /* jshint ignore:end */
+/* eslint-enable no-unused-vars */
 
 /* eslint-disable guard-for-in */
 /* eslint-env amd:false */
@@ -89,8 +91,6 @@ var esl;
     var waitTimeout;
     // #end-ignore
 
-    /* eslint-disable fecs-key-spacing */
-    /* eslint-disable key-spacing */
     /**
      * require配置
      *
@@ -110,7 +110,6 @@ var esl;
         bundles    : {},
         urlArgs    : {}
     };
-    /* eslint-enable key-spacing */
 
     /**
      * 加载模块
@@ -395,22 +394,20 @@ var esl;
         // depRs: 实际依赖的资源集合
         // ------------------------------------
         if (!modModules[id]) {
-            /* eslint-disable key-spacing */
             modModules[id] = {
-                id          : id,
-                depsDec     : dependencies,
-                deps        : dependencies || ['require', 'exports', 'module'],
-                factoryDeps : [],
-                factory     : factory,
-                exports     : {},
-                config      : moduleConfigGetter,
-                state       : MODULE_PRE_DEFINED,
-                require     : createLocalRequire(id),
-                depMs       : [],
-                depMkv      : {},
-                depRs       : []
+                id         : id,
+                depsDec    : dependencies,
+                deps       : dependencies || ['require', 'exports', 'module'],
+                factoryDeps: [],
+                factory    : factory,
+                exports    : {},
+                config     : moduleConfigGetter,
+                state      : MODULE_PRE_DEFINED,
+                require    : createLocalRequire(id),
+                depMs      : [],
+                depMkv     : {},
+                depRs      : []
             };
-            /* eslint-enable key-spacing */
         }
     }
 
@@ -1169,6 +1166,7 @@ var esl;
      *
      * @inner
      * @param {string} source 源字符串
+     * @param {string} baseId 当前module id
      * @return {string} url
      */
     function toUrl(source, baseId) {
