@@ -904,6 +904,14 @@ var esl;
                     );
                 }
 
+                if (typeof exports === 'function') {
+                    exports = (function (exports) {
+                        return function () {
+                            return exports;
+                        };
+                    })(exports);
+                }
+
                 globalDefine(moduleId, shimDeps, exports || {});
             }
             else {
