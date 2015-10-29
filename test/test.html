@@ -16,7 +16,7 @@ require.config({
     paths: {
         'css': '../src/css',
         'js': '../src/js',
-        'abspath': '/test/pathstest',
+        'abspath': location.pathname.replace(/\/[^\/]+$/, '/') + 'pathstest',
         'relapath': 'pathstest/rela'
     },
     map: {
@@ -409,6 +409,7 @@ require.config({
         shimMixedSD: 'shim/mixed/sd',
         shimMixedSE: 'shim/mixed/se',
         shimMixedSF: 'shim/mixed/sf',
+        shimMixedSG: 'shim/mixed/sg',
         shimMixedLib: 'shim/mixed/shimLib',
         shimMixedHybird: 'shim/mixed/shimHybird',
         shimMixedHybird2: 'shim/mixed/shimHybird2',
@@ -475,6 +476,9 @@ require.config({
         shimMixedSF: {
             deps: ['shimMixedSC'],
             exports: 'shimMixedSFOther'
+        },
+        shimMixedSG: {
+            exports: 'shimMixedSGOther'
         },
         shimMixedUI: {
             exports: 'shimMixedUI',
