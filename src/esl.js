@@ -901,15 +901,9 @@ var esl;
                     );
                 }
 
-                if (typeof exports === 'function') {
-                    exports = (function (exports) {
-                        return function () {
-                            return exports;
-                        };
-                    })(exports);
-                }
-
-                globalDefine(moduleId, shimDeps, exports || {});
+                globalDefine(moduleId, shimDeps, function () { 
+                    return exports || {};
+                });
             }
             else {
                 modCompletePreDefine(moduleId);
