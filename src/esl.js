@@ -175,7 +175,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.0.8';
+    globalRequire.version = '2.0.9';
 
     /**
      * loader名称
