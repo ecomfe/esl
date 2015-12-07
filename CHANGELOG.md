@@ -1,4 +1,9 @@
 
+2.1.0
+-------
+
++ bug修复：当shim的模块为function时，会做为factory自动执行。应该不执行，将此function做为shim的模块
+
 2.0.8
 -------
 
