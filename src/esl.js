@@ -1339,7 +1339,12 @@ var esl;
         indexRetrieve(
             baseId,
             mappingIdIndex,
-            function (value) {
+            function (value, key) {
+                var lastItem = mappingIdIndex[mappingIdIndex.length - 1];
+                if (key !== '*' && lastItem.k === '*') {
+                    value = value.concat(lastItem.v);
+                }
+
                 indexRetrieve(
                     moduleId,
                     value,

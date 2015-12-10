@@ -25,6 +25,15 @@ require.config({
         },
         'usecjs/change2amd': {
             simple: 'amd/simple'
+        },
+        '*': {
+            'map/lib': 'map/betterlib'
+        },
+        'map/biz': {
+            'map/lib': 'map/lib'
+        },
+        'map/biz2': {
+            'map/view': 'map/formview'
         }
     },
     packages: [
@@ -321,6 +330,10 @@ input { font-size: 12px; width: 210px;}
     </tr>
     <tr>
         <td><input value="nomapGlobal" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mapMixDefaultAndNamed" type="button"></td>
         <td class="uncheck"></td>
     </tr>
     <tr>
@@ -1129,6 +1142,30 @@ function nomapGlobal( stateTd, callback ) {
     require( [ 'simple/index' ], function ( module ) {
         checkNormalModule( 'simple/index', stateTd, module, callback );
     } );
+}
+
+function mapMixDefaultAndNamed( stateTd, callback ) {
+    require(
+        ['map/index', 'map/biz', 'map/biz2', 'map/biz/model', 'map/biz2/model'],
+        function (index, biz, biz2, model, model2) {
+            var valid = index.check()
+                && biz.check()
+                && biz2.check()
+                && model.check()
+                && model2.check();
+
+            if (valid) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
 }
 
 function longMapFirst( stateTd, callback ) {
