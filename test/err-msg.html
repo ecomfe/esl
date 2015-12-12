@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+
+    <script src="impl/esl/esl.js"></script>
+    <script>
+    require.config( {
+        waitSeconds: 3,
+        baseUrl: '.',
+        packages: [
+            {
+                name: 'pkg',
+                location: 'err-msg/pkg'
+            },
+            {
+                name: 'pkg2',
+                location: 'err-msg/pkg2',
+                main: 'test'
+            },
+            {
+                name: 'pkg3',
+                location: 'err-msg/pkg3',
+                main: 'test'
+            }
+        ]
+    } );
+    </script>
+    <script>
+    require(['err-msg/index']);
+    </script>
+</head>
+<body>
+[MODULE_TIMEOUT]Hang( err-msg/index, err-msg/lib, err-msg/lib-a, err-msg/lib-b, pkg/main ) Miss( err-msg/lib2, pkg2/test )

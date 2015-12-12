@@ -213,20 +213,11 @@ var esl;
          * @param {boolean} hard 是否装载时依赖
          */
         function checkError(id, hard) {
-            if (visited[id] || modIs(id, MODULE_DEFINED)) {
+            if (visited[id]) {
                 return;
             }
 
             visited[id] = 1;
-
-            if (!modIs(id, MODULE_PREPARED)) {
-                // HACK: 为gzip后体积优化，不做抽取
-                if (!hangModulesMap[id]) {
-                    hangModulesMap[id] = 1;
-                    hangModules.push(id);
-                }
-            }
-
             var mod = modModules[id];
             if (!mod) {
                 if (!missModulesMap[id]) {
@@ -234,7 +225,7 @@ var esl;
                     missModules.push(id);
                 }
             }
-            else if (hard) {
+            else if ((hard && !modIs(id, MODULE_DEFINED)) || !modIs(id, MODULE_PREPARED)) {
                 if (!hangModulesMap[id]) {
                     hangModulesMap[id] = 1;
                     hangModules.push(id);
@@ -247,6 +238,7 @@ var esl;
                     }
                 );
             }
+            
         }
 
         for (var id in modAutoDefineModules) {
@@ -262,6 +254,8 @@ var esl;
                 + ' )'
             );
         }
+
+
     }
     // #end-ignore
 
