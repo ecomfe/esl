@@ -213,7 +213,7 @@ var esl;
          * @param {boolean} hard 是否装载时依赖
          */
         function checkError(id, hard) {
-            if (visited[id]) {
+            if (visited[id] || modIs(id, MODULE_DEFINED)) {
                 return;
             }
 
@@ -225,7 +225,7 @@ var esl;
                     missModules.push(id);
                 }
             }
-            else if ((hard && !modIs(id, MODULE_DEFINED)) || !modIs(id, MODULE_PREPARED)) {
+            else if (hard || !modIs(id, MODULE_PREPARED)) {
                 if (!hangModulesMap[id]) {
                     hangModulesMap[id] = 1;
                     hangModules.push(id);
@@ -1095,6 +1095,18 @@ var esl;
             }
         );
 
+        var lastMapItem = mappingIdIndex[mappingIdIndex.length - 1];
+        if (lastMapItem && lastMapItem.k === '*') {
+            each(
+                mappingIdIndex,
+                function (item) {
+                    if (item != lastMapItem) {
+                        item.v = item.v.concat(lastMapItem.v);
+                    }
+                }
+            );
+        }
+
         // create packages index
         packagesIndex = [];
         each(
@@ -1333,12 +1345,7 @@ var esl;
         indexRetrieve(
             baseId,
             mappingIdIndex,
-            function (value, key) {
-                var lastItem = mappingIdIndex[mappingIdIndex.length - 1];
-                if (key !== '*' && lastItem.k === '*') {
-                    value = value.concat(lastItem.v);
-                }
-
+            function (value) {
                 indexRetrieve(
                     moduleId,
                     value,
