@@ -62,7 +62,7 @@ See [Configuration Options](doc/config.md)
 `uglifyjs -mc + gzip`
 
 - `esl 2.1.0` 3.5k
-- `requirejs 2.1.15` 6.2k
+- `requirejs 2.1.22` 6.3k
 
 
 ### 性能对比 (PERFORMANCE)
