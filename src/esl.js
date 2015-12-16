@@ -247,11 +247,11 @@ var esl;
 
         if (hangModules.length || missModules.length) {
             throw new Error(
-                '[MODULE_TIMEOUT]Hang( '
+                '[MODULE_TIMEOUT]Hang('
                 + (hangModules.join(', ') || 'none')
-                + ' ) Miss( '
+                + ') Miss('
                 + (missModules.join(', ') || 'none')
-                + ' )'
+                + ')'
             );
         }
 
