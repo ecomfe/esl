@@ -1,5 +1,5 @@
 define(function (require) {
-    
-    require('./a');
     require('./c');
+    require('./a');
+    
 });
