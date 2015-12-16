@@ -2,6 +2,6 @@ define(
     ['./b'],
     function (b) {
         b.name;
-        return {name: 'a'};
+        return {name: 'index'};
     }
 );

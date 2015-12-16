@@ -1,6 +1,6 @@
 define(
     function (require) {
         require('./b').name;
-        return {name: 'a'};
+        return {name: 'index'};
     }
 );
