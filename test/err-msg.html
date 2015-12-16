@@ -2,10 +2,16 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <style>
+    ul {list-style: none; margin: 0; padding: 0;}
+    li {margin-top: 10px; padding: 20px 0; border-bottom: 1px solid #ccc;}
+    h3 {margin: 0; font-size: 16px;}
+    p {font-size: 12px; color: #333;}
+    </style>
 
     <script src="impl/esl/esl.js"></script>
     <script>
-    require.config( {
+    require.config({
         waitSeconds: 3,
         baseUrl: '.',
         packages: [
@@ -24,11 +30,51 @@
                 main: 'test'
             }
         ]
-    } );
+    });
     </script>
     <script>
-    require(['err-msg/index']);
+    function runTest(name) {
+        require(['err-msg/' + name + '/index']);
+    }
+
+    function runRelativeRequireTest() {
+        require([ 'err-msg/global-require-relative-id/local/index' ], function ( index ) {
+            alert( index.a.name );
+        });
+        require([ 'err-msg/global-require-relative-id/global/index' ], function ( index ) {
+            alert( index.a.name );
+        });
+        require( ['./err-msg/global-require-relative-id/local/index'] );
+    }
     </script>
 </head>
 <body>
-[MODULE_TIMEOUT]Hang( err-msg/index, err-msg/lib, err-msg/lib-a, err-msg/lib-b, pkg/main ) Miss( err-msg/lib2, pkg2/test )
+<ul>
+    <li>
+        <h3>factory运行出错时，直接抛出异常，在console面板能定位到错误</h3>
+        <p>ReferenceError: noExistsVariable is not defined</p>
+        <button onclick="runTest('factory-error')">run test</button>
+    <li>
+        <h3>未加载到的模块，应出现在错误信息的Miss中</h3>
+        <p>[MODULE_TIMEOUT]Hang(err-msg/miss-module/index, err-msg/miss-module/a) Miss(err-msg/miss-module/c)</p>
+        <button onclick="runTest('miss-module')">run test</button>
+    <li>
+        <h3>死循环依赖（参数声明）导致模块初始化失败，所有相关模块应出现在Hang中，并且浏览器不能卡死</h3>
+        <p>[MODULE_TIMEOUT]Hang(err-msg/dead-param-dep/index, err-msg/dead-param-dep/b, err-msg/dead-param-dep/c, err-msg/dead-param-dep/d, err-msg/dead-param-dep/e, err-msg/dead-param-dep/f, err-msg/dead-param-dep/g) Miss(none)</p>
+        <button onclick="runTest('dead-param-dep')">run test</button>
+    <li>
+        <h3>死循环依赖（require声明）导致模块初始化失败，所有相关模块应出现在Hang中，并且浏览器不能卡死</h3>
+        <p>[MODULE_TIMEOUT]Hang(err-msg/dead-require-dep/index, err-msg/dead-require-dep/b, err-msg/dead-require-dep/c, err-msg/dead-require-dep/d, err-msg/dead-require-dep/e, err-msg/dead-require-dep/f) Miss(none)</p>
+        <button onclick="runTest('dead-require-dep')">run test</button>
+    <li>
+        <h3>factory中使用了global require请求relative id，应直接报错</h3>
+        <p>alert "local/a"</p>
+        <p>[REQUIRE_FATAL]Relative ID is not allowed in global require: ./err-msg/global-require-relative-id/local/index</p>
+        <p>[REQUIRE_FATAL]Relative ID is not allowed in global require: ./a</p>
+        <button onclick="runRelativeRequireTest()">run test</button>
+
+    <li>[MODULE_TIMEOUT]Hang( err-msg/index, err-msg/lib, err-msg/lib-a, err-msg/lib-b, pkg/main ) Miss( err-msg/lib2, pkg2/test )
+</ul>
+
+
+
