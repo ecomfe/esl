@@ -77,3 +77,7 @@ See [wiki page](https://github.com/ecomfe/esl/wiki/1.8.0-%E6%A8%A1%E5%9D%97%E5%8
 [了解ESL的进化史(CHANGE LOG)](CHANGELOG.md)
 
 
+### 错误信息 (ERROR MESSAGE)
+
+阅读 [ESL 中的错误提示信息](http://efe.baidu.com/blog/esl-error-message/) 一文，以帮助您使用 ESL 时进行错误追查与调试。
+
