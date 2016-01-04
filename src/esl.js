@@ -553,8 +553,7 @@ var esl;
             each(
                 mod.depMs,
                 function (dep) {
-                    // return (prepared = update(dep.absId));
-                    prepared = update(dep.absId) && prepared;
+                    return prepared = update(dep.absId) && prepared;
                 }
             );
 
@@ -885,7 +884,7 @@ var esl;
                     );
                 }
 
-                globalDefine(moduleId, shimDeps, function () { 
+                globalDefine(moduleId, shimDeps, function () {
                     return exports || {};
                 });
             }
