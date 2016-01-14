@@ -1,13 +1,14 @@
 define(function (require) {
-    var a = require('./a');
-    var b = require('./b');
+    var lib = require('./lib');
+    var sub = require('./sub');
 
     return {
         name: 'amd/triangleDependency/index',
         check: function (){
-            return a.name === 'amd/triangleDependency/a'
-                && b.name === 'amd/triangleDependency/b'
-                && a.check();
+            return lib.name === 'amd/triangleDependency/lib'
+                && sub.name === 'amd/triangleDependency/sub'
+                && lib.check()
+                && sub.check();
         }
     }
 });

@@ -146,10 +146,7 @@ input { font-size: 12px; width: 210px;}
         <td><input value="amd/deepDependency3" type="button"></td>
         <td class="uncheck"></td>
     </tr>
-    <tr>
-        <td><input value="amd/triangleDependency" type="button"></td>
-        <td class="uncheck"></td>
-    </tr>
+    
     <tr>
         <td><input value="amd/simpleCircleDependency" type="button"></td>
         <td class="uncheck"></td>
@@ -196,6 +193,10 @@ input { font-size: 12px; width: 210px;}
     </tr>
     <tr>
         <td><input value="meaninglessDefine" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="triangleDependency" type="button"></td>
         <td class="uncheck"></td>
     </tr>
 </table>
@@ -1104,6 +1105,18 @@ function meaninglessDefine( stateTd, callback ) {
     define({});
     require([ 'meaninglessDefine/index' ], function ( index ) {
         stateTd.className = index.name == 'meaninglessDefine/index' ? 'pass' : 'fail';
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    })
+}
+
+function triangleDependency(stateTd, callback) {
+    require([ 'amd/triangleDependency/index', 'amd/triangleDependency/sub' ], function ( index, sub ) {
+        stateTd.className = index.name == 'amd/triangleDependency/index' && index.check() 
+            ? 'pass' 
+            : 'fail';
 
         if ( typeof callback == 'function' ) {
             setTimeout( callback, 1 );
