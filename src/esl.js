@@ -868,9 +868,10 @@ var esl;
                     bundledScriptCallbacks[bundleModuleId] = [wrapLoadedArgs(shimConf, shimDeps, moduleId)];
                     createScript(bundleModuleId, function () {
                         // 顺次调用loaded函数
-                        each(bundledScriptCallbacks[bundleModuleId], function (args) {
-                            loaded(args);
-                        })
+                        var queue = bundledScriptCallbacks[bundleModuleId];
+                        while (queue.length) {
+                            loaded(queue.shift());
+                        }
                         bundledScriptCallbacks[bundleModuleId] = null;
                     });
                 }
