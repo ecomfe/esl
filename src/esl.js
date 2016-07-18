@@ -812,6 +812,8 @@ var esl;
      */
     var loadingModules = {};
 
+    var bundledScriptCallbacks = {};
+
     /**
      * 加载模块
      *
@@ -856,8 +858,36 @@ var esl;
         function load() {
             /* eslint-disable no-use-before-define */
             var bundleModuleId = bundlesIndex[moduleId];
-            createScript(bundleModuleId || moduleId, loaded);
+            if (bundleModuleId == null) {
+                createScript(moduleId, loaded);
+            }
+            else {
+                // 如果是bundled module， 可能这个bundle已经在加载了
+                if (bundledScriptCallbacks[bundleModuleId] == null) {
+                    // 初次加载， 记录并且createScript
+                    bundledScriptCallbacks[bundleModuleId] = [wrapLoadedArgs(shimConf, shimDeps, moduleId)];
+                    createScript(bundleModuleId, function () {
+                        // 顺次调用loaded函数
+                        each(bundledScriptCallbacks[bundleModuleId], function (args) {
+                            loaded(args);
+                        })
+                        bundledScriptCallbacks[bundleModuleId] = null;
+                    });
+                }
+                else {
+                    // 不是初次加载， 加入已有的回调链
+                    bundledScriptCallbacks[bundleModuleId].push(wrapLoadedArgs(shimConf, shimDeps, moduleId));
+                }
+            }
             /* eslint-enable no-use-before-define */
+        }
+
+        function wrapLoadedArgs(_shimConf, _shimDeps, _moduleId) {
+            return {
+                shimConf: _shimConf,
+                shimDeps: _shimDeps,
+                moduleId: _moduleId
+            };
         }
 
         /**
@@ -865,20 +895,24 @@ var esl;
          *
          * @inner
          */
-        function loaded() {
-            if (shimConf) {
+        function loaded(args) {
+            args = args || {};
+            var _shimConf = args.shimConf || shimConf;
+            var _shimDeps = args.shimDeps || shimDeps;
+            var _moduleId = args.moduleId || moduleId;
+            if (_shimConf) {
                 var exports;
-                if (typeof shimConf.init === 'function') {
-                    exports = shimConf.init.apply(
+                if (typeof _shimConf.init === 'function') {
+                    exports = _shimConf.init.apply(
                         global,
-                        modGetModulesExports(shimDeps, BUILDIN_MODULE)
+                        modGetModulesExports(_shimDeps, BUILDIN_MODULE)
                     );
                 }
 
-                if (exports == null && shimConf.exports) {
+                if (exports == null && _shimConf.exports) {
                     exports = global;
                     each(
-                        shimConf.exports.split('.'),
+                        _shimConf.exports.split('.'),
                         function (prop) {
                             exports = exports[prop];
                             return !!exports;
@@ -886,12 +920,12 @@ var esl;
                     );
                 }
 
-                globalDefine(moduleId, shimDeps, function () { 
+                globalDefine(_moduleId, _shimDeps, function () { 
                     return exports || {};
                 });
             }
             else {
-                modCompletePreDefine(moduleId);
+                modCompletePreDefine(_moduleId);
             }
 
             modAutoDefine();

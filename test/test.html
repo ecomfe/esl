@@ -408,6 +408,10 @@ input { font-size: 12px; width: 210px;}
         <td><input value="packageBundles" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="dupLoad" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 </table>
 
 <script>
@@ -784,6 +788,10 @@ require.config({
         ],
         'bundles/package/index': [
             'bundlesPackage'
+        ],
+        'bundles/dupLoad/index': [
+            'bundles/dupLoad/packageA',
+            'bundles/dupLoad/packageB'
         ]
     },
     packages:[
@@ -865,6 +873,19 @@ function packageBundles(stateTd, callback) {
         }
     );
 }
+
+function dupLoad(stateTd, callback) {
+    require(['bundles/dupLoad/packageA', 'bundles/dupLoad/packageB'], function () {
+        var name = 'bundles/dupLoad/index';
+        require([name], function (dupLoad) {
+            setTimeout(function () {
+                checkNormalModule(name, stateTd, dupLoad, callback);
+            }, 1);
+        });
+    });
+
+}
+
 </script>
 
 <script>
