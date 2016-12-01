@@ -127,6 +127,39 @@ define(
 ```
 
 
+### shim
+
+`Object`
+
+[AMD](https://github.com/amdjs/amdjs-api/wiki/Common-Config) 标准配置项。通过shim配置对一个非AMD、通过全局暴露的模块进行管理，比如依赖声明、暴露点以及初始化行为。
+
+```javascript
+require.config({
+    shim: {
+        underscore: {
+            exports: '_'
+        },
+
+        backbone: {
+            deps: ['jquery', 'underscore'],
+            exports: 'Backbone'
+        }
+    }
+});
+```
+
+配置shim后，你可以在AMD模块内依赖非AMD模块，就像依赖一个AMD模块一样。
+
+```javascript
+define(function (require) {
+    var Backbone = require('backbone');
+    return Backbone.Model.extend({});
+});
+```
+
+更详细信息请参考 [requirejs 的 shim 描述](http://requirejs.org/docs/api.html#config-shim)
+
+
 ### waitSeconds
 
 `Interger`
