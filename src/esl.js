@@ -886,7 +886,7 @@ var esl;
                     );
                 }
 
-                globalDefine(moduleId, shimDeps, function () { 
+                globalDefine(moduleId, shimDeps, function () {
                     return exports || {};
                 });
             }
@@ -1099,25 +1099,42 @@ var esl;
         }
 
         // create packages index
+        var packageNames = {};
+        var packageLen = requireConf.packages.length;
+
         packagesIndex = [];
-        each(
-            requireConf.packages,
-            function (packageConf) {
-                var pkg = packageConf;
-                if (typeof packageConf === 'string') {
+        while (packageLen--) {
+            var packageConf = requireConf.packages[packageLen];
+            var pkg;
+
+            switch (typeof packageConf) {
+                case 'string':
                     pkg = {
                         name: packageConf.split('/')[0],
-                        location: packageConf,
-                        main: 'main'
+                        location: packageConf
                     };
-                }
+                    break;
 
-                pkg.location = pkg.location || pkg.name;
-                pkg.main = (pkg.main || 'main').replace(/\.js$/i, '');
-                pkg.reg = createPrefixRegexp(pkg.name);
-                packagesIndex.push(pkg);
+                case 'object':
+                    pkg = {
+                        name: packageConf.name,
+                        location: packageConf.location,
+                        main: packageConf.main
+                    };
+                    break;
             }
-        );
+
+            if (packageNames[pkg.name]) {
+                continue;
+            }
+            packageNames[pkg.name] = 1;
+
+            pkg.location = pkg.location || pkg.name;
+            pkg.main = (pkg.main || 'main').replace(/\.js$/i, '');
+            pkg.reg = createPrefixRegexp(pkg.name);
+            packagesIndex.push(pkg);
+        }
+
         packagesIndex.sort(descSorterByKOrName);
 
         // create urlArgs index

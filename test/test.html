@@ -146,7 +146,7 @@ input { font-size: 12px; width: 210px;}
         <td><input value="amd/deepDependency3" type="button"></td>
         <td class="uncheck"></td>
     </tr>
-    
+
     <tr>
         <td><input value="amd/simpleCircleDependency" type="button"></td>
         <td class="uncheck"></td>
@@ -360,6 +360,10 @@ input { font-size: 12px; width: 210px;}
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <td><input value="mergePackage" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <th colspan="2" align="left">Conf shim:</th>
     </tr>
     <tr>
@@ -409,6 +413,42 @@ input { font-size: 12px; width: 210px;}
         <td class="uncheck"></td>
     </tr>
 </table>
+
+<script>
+require.config({
+    packages: [
+        {
+            name: 'merge-package',
+            location: 'merge-pkg/old'
+        }
+    ]
+});
+
+require.config({
+    packages: [
+        {
+            name: 'merge-package',
+            location: 'merge-pkg/new',
+            main: 'index'
+        }
+    ]
+});
+
+function mergePackage(stateTd, callback) {
+    require(['merge-package'], function (pkg) {
+        if (pkg.name === 'merge-package:new') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if (typeof callback == 'function') {
+            setTimeout(callback, 1);
+        }
+    });
+}
+</script>
 
 <script>
 // shim test
@@ -1114,8 +1154,8 @@ function meaninglessDefine( stateTd, callback ) {
 
 function triangleDependency(stateTd, callback) {
     require([ 'amd/triangleDependency/index', 'amd/triangleDependency/sub' ], function ( index, sub ) {
-        stateTd.className = index.name == 'amd/triangleDependency/index' && index.check() 
-            ? 'pass' 
+        stateTd.className = index.name == 'amd/triangleDependency/index' && index.check()
+            ? 'pass'
             : 'fail';
 
         if ( typeof callback == 'function' ) {
