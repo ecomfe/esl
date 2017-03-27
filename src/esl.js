@@ -554,8 +554,7 @@ var esl;
             each(
                 mod.depMs,
                 function (dep) {
-                    // return (prepared = update(dep.absId));
-                    prepared = update(dep.absId) && prepared;
+                    return prepared = update(dep.absId) && prepared;
                 }
             );
 
