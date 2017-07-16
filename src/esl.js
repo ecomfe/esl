@@ -175,7 +175,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.1.6';
+    globalRequire.version = '2.2.0-beta.1';
 
     /**
      * loader名称
@@ -191,6 +191,24 @@ var esl;
      * @return {string}
      */
     globalRequire.toUrl = actualGlobalRequire.toUrl;
+
+    /**
+     * 加载器容器对象
+     *
+     * @type {Array.<Function>}
+     */
+    var loaders = [];
+
+    /**
+     * 添加加载器
+     *
+     * @param {Function} loader 加载器函数
+     */
+    globalRequire.addLoader = function (loader) {
+        if (typeof loader === 'function') {
+            loaders.push(loader);
+        }
+    };
 
     // #begin-ignore
     /**
@@ -273,15 +291,17 @@ var esl;
      * @inner
      * @param {string} currentId 匿名define的模块的id
      */
-    function modCompletePreDefine(currentId) {
+    function modCompletePreDefine(ids) {
         // HACK: 这里在IE下有个性能陷阱，不能使用任何变量。
         //       否则貌似会形成变量引用和修改的读写锁，导致wait4PreDefine释放困难
         each(wait4PreDefine, function (mod) {
-            modPreDefine(
-                currentId,
-                mod.deps,
-                mod.factory
-            );
+            each(ids, function (currentId) {
+                modPreDefine(
+                    currentId,
+                    mod.deps,
+                    mod.factory
+                );
+            });
         });
 
         wait4PreDefine.length = 0;
@@ -320,18 +340,23 @@ var esl;
 
         var opera = window.opera;
 
-        // IE下通过current script的data-require-id获取当前id
-        if (
-            !id
+        var ids;
+        // IE下通过current script的attribute获取当前id
+        if (!id
             && document.attachEvent
             && (!(opera && opera.toString() === '[object Opera]'))
         ) {
             var currentScript = getCurrentScript();
-            id = currentScript && currentScript.getAttribute('data-require-id');
+            ids = currentScript && loadingURL4Modules[currentScript.getAttribute('data-src')];
         }
 
         if (id) {
             modPreDefine(id, dependencies, factory);
+        }
+        else if (ids) {
+            each(ids, function (id) {
+                modPreDefine(id, dependencies, factory);
+            });
         }
         else {
             // 纪录到共享变量中，在load或readystatechange中处理
@@ -765,15 +790,34 @@ var esl;
     function nativeAsyncRequire(ids, callback, baseId) {
         var isCallbackCalled = 0;
 
+        var idsNeedToLoad = [];
         each(ids, function (id) {
             if (!(BUILDIN_MODULE[id] || modIs(id, MODULE_DEFINED))) {
                 modAddDefinedListener(id, tryFinishRequire);
-                (id.indexOf('!') > 0
-                    ? loadResource
-                    : loadModule
-                )(id, baseId);
+
+                var loaderValue;
+                each(loaders, function (loader) {
+                    loaderValue = loader(id, modAutoDefine);
+                    if (typeof loaderValue !== 'undefined') {
+                        return false;
+                    }
+                });
+
+                if (loaderValue === false) {
+                    return;
+                }
+
+                if (typeof loaderValue === 'string') {
+                    loadModule(id, loaderValue);
+                }
+                else {
+                    (id.indexOf('!') > 0)
+                        ? loadResource(id, baseId)
+                        : loadModule(id);
+                }
             }
         });
+
         tryFinishRequire();
 
         /**
@@ -812,18 +856,25 @@ var esl;
      */
     var loadingModules = {};
 
+    var loadingURLs = {};
+    var loadingURL4Modules = {};
+
     /**
      * 加载模块
      *
      * @inner
      * @param {string} moduleId 模块标识
+     * @param {string?} moduleSrc 模块对应Url
      */
-    function loadModule(moduleId) {
+    function loadModule(moduleId, moduleSrc) {
         // 加载过的模块，就不要再继续了
         if (loadingModules[moduleId] || modModules[moduleId]) {
             return;
         }
+
         loadingModules[moduleId] = 1;
+        var loadId = bundlesIndex[moduleId] || moduleId;
+        moduleSrc = moduleSrc || toUrl(loadId + '.js');
 
         // 初始化相关 shim 的配置
         var shimConf = requireConf.shim[moduleId];
@@ -855,47 +906,45 @@ var esl;
          */
         function load() {
             /* eslint-disable no-use-before-define */
-            var bundleModuleId = bundlesIndex[moduleId];
-            createScript(bundleModuleId || moduleId, loaded);
+            if (!loadingURL4Modules[moduleSrc]) {
+                loadingURL4Modules[moduleSrc] = [];
+            }
+
+            loadingURL4Modules[moduleSrc].push(moduleId);
+            createScript(moduleSrc, function () {
+                if (shimConf) {
+                    var exports;
+                    if (typeof shimConf.init === 'function') {
+                        exports = shimConf.init.apply(
+                            global,
+                            modGetModulesExports(shimDeps, BUILDIN_MODULE)
+                        );
+                    }
+
+                    if (exports == null && shimConf.exports) {
+                        exports = global;
+                        each(
+                            shimConf.exports.split('.'),
+                            function (prop) {
+                                exports = exports[prop];
+                                return !!exports;
+                            }
+                        );
+                    }
+
+                    globalDefine(moduleId, shimDeps, function () {
+                        return exports || {};
+                    });
+                }
+                else {
+                    modCompletePreDefine(loadingURL4Modules[moduleSrc]);
+                }
+
+                modAutoDefine();
+            });
             /* eslint-enable no-use-before-define */
         }
 
-        /**
-         * script标签加载完成的事件处理函数
-         *
-         * @inner
-         */
-        function loaded() {
-            if (shimConf) {
-                var exports;
-                if (typeof shimConf.init === 'function') {
-                    exports = shimConf.init.apply(
-                        global,
-                        modGetModulesExports(shimDeps, BUILDIN_MODULE)
-                    );
-                }
-
-                if (exports == null && shimConf.exports) {
-                    exports = global;
-                    each(
-                        shimConf.exports.split('.'),
-                        function (prop) {
-                            exports = exports[prop];
-                            return !!exports;
-                        }
-                    );
-                }
-
-                globalDefine(moduleId, shimDeps, function () {
-                    return exports || {};
-                });
-            }
-            else {
-                modCompletePreDefine(moduleId);
-            }
-
-            modAutoDefine();
-        }
     }
 
     /**
@@ -945,7 +994,7 @@ var esl;
          */
         pluginOnload.fromText = function (id, text) {
             new Function(text)();
-            modCompletePreDefine(id);
+            modCompletePreDefine([id]);
         };
         /* jshint ignore:end */
 
@@ -1588,15 +1637,21 @@ var esl;
         headElement = baseElement.parentNode;
     }
 
-    function createScript(moduleId, onload) {
+    function createScript(src, onload) {
+        if (loadingURLs[src]) {
+            return;
+        }
+
+        loadingURLs[src] = 1;
+
         // 创建script标签
         //
         // 这里不挂接onerror的错误处理
         // 因为高级浏览器在devtool的console面板会报错
         // 再throw一个Error多此一举了
         var script = document.createElement('script');
-        script.setAttribute('data-require-id', moduleId);
-        script.src = toUrl(moduleId + '.js');
+        script.setAttribute('data-src', src);
+        script.src = src;
         script.async = true;
         if (script.readyState) {
             script.onreadystatechange = innerOnload;

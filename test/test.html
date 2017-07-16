@@ -62,12 +62,12 @@ require.config({
     }
 });
 
-function hasModuleRequest( moduleId ) {
-    var scripts = document.getElementsByTagName( 'script' );
+function hasModuleRequest(moduleId) {
+    var scripts = document.getElementsByTagName('script');
     var len = scripts.length;
 
-    while ( len-- ) {
-        if ( scripts[ len ].getAttribute( 'data-require-id' ) == moduleId ) {
+    while (len--) {
+        if (scripts[len].getAttribute('data-src') == require.toUrl(moduleId + '.js')) {
             return true;
         }
     }
@@ -410,6 +410,16 @@ input { font-size: 12px; width: 210px;}
     </tr>
     <tr>
         <td><input value="packageBundles" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Custom Loader:</th>
+    </tr>
+    <tr>
+        <td><input value="custom-loader" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr><tr>
+        <td><input value="userDefineCustomLoader" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
 </table>
@@ -945,6 +955,7 @@ function defineInScriptLoadSoon(stateTd, callback) {
         }
 
         require(['define-in-script-load-soon/index'], function (index) {
+            console.log(index.name)
             if (hasModuleRequest('define-in-script-load-soon/cat')
                 && index.name === 'define-in-script-load-soon/index'
                 && index.check()
@@ -1421,6 +1432,54 @@ function urlArgs( stateTd, callback ) {
     }
 
 })();
+</script>
+
+<script>
+require.addLoader(function (id, callback) {
+    if (/^custom-loader($|\/)/.test(id)) {
+        return require.toUrl(id + '.js').replace('custom-loader', 'custom-loader-ln');
+    }
+});
+
+require.addLoader(function (id, callback) {
+    if (/^ud-custom-loader($|\/)/.test(id)) {
+        if (id.indexOf('index') > 0) {
+            define('ud-custom-loader/index', ['require', './cat'], function (require) {
+                var cat = require('./cat');
+                return {
+                    name: 'ud-custom-loader/index',
+                    cat: cat
+                };
+            });
+            callback();
+        }
+        else {
+            setTimeout(function () {
+                define(id, {name: id});
+                callback();
+            }, 500);
+        }
+
+        return false;
+    }
+});
+
+function userDefineCustomLoader(stateTd, callback) {
+    require(['ud-custom-loader/index'], function (index) {
+        if (index.name === 'ud-custom-loader/index'
+            && index.cat.name === 'ud-custom-loader/cat'
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
 </script>
 </body>
 </html>
