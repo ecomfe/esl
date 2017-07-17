@@ -431,6 +431,10 @@ input { font-size: 12px; width: 210px;}
         <td><input value="ud-loader-wait" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="ud-loader-wait2" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 
 </table>
 
@@ -1535,6 +1539,18 @@ require.addLoader(function (context, callback) {
     if (/^ud-loader-wait($|\/)/.test(id)) {
         setTimeout(function () {
             context.load();
+        }, 200);
+        return false;
+    }
+});
+
+// wait and call load method soon
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
+    if (/^ud-loader-wait2($|\/)/.test(id)) {
+        setTimeout(function () {
+            context.load(require.toUrl(id + '.js').replace('ud-loader-wait2', 'ud-loader-wait-ln'));
         }, 200);
         return false;
     }
