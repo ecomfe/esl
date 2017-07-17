@@ -418,10 +418,20 @@ input { font-size: 12px; width: 210px;}
     <tr>
         <td><input value="custom-loader" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
-    </tr><tr>
+    </tr>
+    <tr>
         <td><input value="userDefineCustomLoader" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="userDefineCustomLoaderIdUniq" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="ud-loader-wait" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+
 </table>
 
 <script>
@@ -955,7 +965,6 @@ function defineInScriptLoadSoon(stateTd, callback) {
         }
 
         require(['define-in-script-load-soon/index'], function (index) {
-            console.log(index.name)
             if (hasModuleRequest('define-in-script-load-soon/cat')
                 && index.name === 'define-in-script-load-soon/index'
                 && index.check()
@@ -1435,13 +1444,16 @@ function urlArgs( stateTd, callback ) {
 </script>
 
 <script>
-require.addLoader(function (id, callback) {
+require.addLoader(function (context, callback) {
+    var id = context.id;
     if (/^custom-loader($|\/)/.test(id)) {
         return require.toUrl(id + '.js').replace('custom-loader', 'custom-loader-ln');
     }
 });
 
-require.addLoader(function (id, callback) {
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
     if (/^ud-custom-loader($|\/)/.test(id)) {
         if (id.indexOf('index') > 0) {
             define('ud-custom-loader/index', ['require', './cat'], function (require) {
@@ -1480,6 +1492,53 @@ function userDefineCustomLoader(stateTd, callback) {
         }
     });
 }
+
+var udLoaderUniqIds = {};
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
+    if (/^ud-loader-uniq($|\/)/.test(id)) {
+        if (!udLoaderUniqIds[id]) {
+            udLoaderUniqIds[id] = 0;
+        }
+
+        udLoaderUniqIds[id]++;
+    }
+});
+
+function userDefineCustomLoaderIdUniq(stateTd, callback) {
+    require(['ud-loader-uniq/index'], function (index) {
+        var notRepeat = 1;
+        for (var key in udLoaderUniqIds) {
+            if (udLoaderUniqIds[key] > 1) {
+                notRepeat = 0;
+            }
+        }
+
+        if (notRepeat) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if (typeof callback == 'function') {
+            setTimeout(callback, 1);
+        }
+    });
+}
+
+// wait and call load method soon
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
+    if (/^ud-loader-wait($|\/)/.test(id)) {
+        setTimeout(function () {
+            context.load();
+        }, 200);
+        return false;
+    }
+});
 </script>
 </body>
 </html>

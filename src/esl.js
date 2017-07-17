@@ -796,24 +796,29 @@ var esl;
                 modAddDefinedListener(id, tryFinishRequire);
 
                 var loaderValue;
-                each(loaders, function (loader) {
-                    loaderValue = loader(id, modAutoDefine);
-                    if (typeof loaderValue !== 'undefined') {
-                        return false;
+                var context = {
+                    id: id,
+                    load: function (src) {
+                        if (!(loadingModules[id] || modModules[id])) {
+                            loadModule(id, src);
+                        }
                     }
-                });
+                };
 
-                if (loaderValue === false) {
-                    return;
-                }
+                if (!(loadingModules[id] || modModules[id])) {
+                    each(loaders, function (loader) {
+                        loaderValue = loader(context, modAutoDefine);
+                        return typeof loaderValue === 'undefined';
+                    });
 
-                if (typeof loaderValue === 'string') {
-                    loadModule(id, loaderValue);
-                }
-                else {
-                    (id.indexOf('!') > 0)
-                        ? loadResource(id, baseId)
-                        : loadModule(id);
+                    if (typeof loaderValue === 'string') {
+                        loadModule(id, loaderValue);
+                    }
+                    else if (loaderValue !== false) {
+                        (id.indexOf('!') > 0)
+                            ? loadResource(id, baseId)
+                            : loadModule(id);
+                    }
                 }
             }
         });
@@ -867,12 +872,8 @@ var esl;
      * @param {string?} moduleSrc 模块对应Url
      */
     function loadModule(moduleId, moduleSrc) {
-        // 加载过的模块，就不要再继续了
-        if (loadingModules[moduleId] || modModules[moduleId]) {
-            return;
-        }
-
         loadingModules[moduleId] = 1;
+
         var loadId = bundlesIndex[moduleId] || moduleId;
         moduleSrc = moduleSrc || toUrl(loadId + '.js');
 
@@ -955,10 +956,6 @@ var esl;
      * @param {string} baseId 当前环境的模块标识
      */
     function loadResource(pluginAndResource, baseId) {
-        if (modModules[pluginAndResource]) {
-            return;
-        }
-
         /* eslint-disable no-use-before-define */
         var bundleModuleId = bundlesIndex[pluginAndResource];
         if (bundleModuleId) {
