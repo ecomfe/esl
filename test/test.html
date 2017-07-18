@@ -1613,7 +1613,6 @@ function userDefineCustomLoaderCheckState(stateTd, callback) {
         var id = context.id;
 
         if (id === 'ud-loader-check-state/index') {
-            debugger
             result = context.getModuleState('ud-loader-check-state/dog') === require.ModuleState.LOADING
                 && context.getModuleState('ud-loader-check-state/cat') === require.ModuleState.PRE_DEFINED
                 && context.getModuleState('ud-loader-check-state/xxx') === require.ModuleState.NOT_FOUND
