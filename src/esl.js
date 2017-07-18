@@ -31,6 +31,8 @@ var esl;
     var modModules = {};
 
     // 模块状态枚举量
+    var MODULE_NOT_FOUND = -1;
+    var MODULE_LOADING = 0;
     var MODULE_PRE_DEFINED = 1;
     var MODULE_ANALYZED = 2;
     var MODULE_PREPARED = 3;
@@ -191,6 +193,20 @@ var esl;
      * @return {string}
      */
     globalRequire.toUrl = actualGlobalRequire.toUrl;
+
+    /**
+     * 模块状态枚举
+     *
+     * @type {Object}
+     */
+    globalRequire.ModuleState = {
+        NOT_FOUND: MODULE_NOT_FOUND,
+        LOADING: MODULE_LOADING,
+        PRE_DEFINED: MODULE_PRE_DEFINED,
+        ANALYZED: MODULE_ANALYZED,
+        PREPARED: MODULE_PREPARED,
+        DEFINED: MODULE_DEFINED
+    };
 
     /**
      * 加载器容器对象
@@ -779,6 +795,24 @@ var esl;
     }
 
     /**
+     * 获取模块状态
+     *
+     * @param {string} id 模块id
+     * @return {number}
+     */
+    function getModState(id) {
+        if (modModules[id]) {
+            return modModules[id].state;
+        }
+
+        if (loadingModules[id]) {
+            return MODULE_LOADING;
+        }
+
+        return MODULE_NOT_FOUND;
+    }
+
+    /**
      * 异步加载模块
      * 内部使用，模块ID必须是经过normalize的Top-Level ID
      *
@@ -802,7 +836,9 @@ var esl;
                         if (!(loadingModules[id] || modModules[id])) {
                             loadModule(id, src);
                         }
-                    }
+                    },
+
+                    getModuleState: getModState
                 };
 
                 if (!(loadingModules[id] || modModules[id])) {

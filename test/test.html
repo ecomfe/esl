@@ -435,6 +435,14 @@ input { font-size: 12px; width: 210px;}
         <td><input value="ud-loader-wait2" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="userDefineCustomLoaderMix" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="userDefineCustomLoaderCheckState" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 
 </table>
 
@@ -1555,6 +1563,89 @@ require.addLoader(function (context, callback) {
         return false;
     }
 });
+
+// wait and call load method soon
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
+    if (id === 'ud-loader-mix/cat') {
+        return false;
+    }
+});
+
+function userDefineCustomLoaderMix(stateTd, callback) {
+    var readyState = 0;
+    var result = true;
+
+    require(['ud-loader-mix/index2'], function (index) {
+        result = result && index.name === 'ud-loader-mix/index2'
+        readyState++;
+        done();
+    });
+
+    setTimeout(function () {
+        require(['ud-loader-mix/index'], function (index) {
+            result = result && index.name === 'ud-loader-mix/index'
+            readyState++;
+            done();
+        });
+    }, 200);
+
+    function done() {
+        if (readyState > 1) {
+            if (!hasModuleRequest('ud-loader-mix/cat')) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if (typeof callback == 'function') {
+                setTimeout(callback, 1);
+            }
+        }
+    }
+}
+
+function userDefineCustomLoaderCheckState(stateTd, callback) {
+    var result = true;
+    require.addLoader(function (context, callback) {
+        var id = context.id;
+
+        if (id === 'ud-loader-check-state/index') {
+            debugger
+            result = context.getModuleState('ud-loader-check-state/dog') === require.ModuleState.LOADING
+                && context.getModuleState('ud-loader-check-state/cat') === require.ModuleState.PRE_DEFINED
+                && context.getModuleState('ud-loader-check-state/xxx') === require.ModuleState.NOT_FOUND
+        }
+    });
+
+
+    define('ud-loader-check-state/cat', function (require) {
+        var animal = require('./animal');
+
+        return {
+            name :'ud-loader-check-state/cat',
+            check: function () {
+                return animal.name === 'ud-loader-check-state/animal';
+            }
+        };
+    });
+
+    require(['ud-loader-check-state/dog']);
+    require(['ud-loader-check-state/index'], function (index) {
+        if (result && index.check() && index.name === 'ud-loader-check-state/index') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if (typeof callback == 'function') {
+            setTimeout(callback, 1);
+        }
+    });
+}
 </script>
 </body>
 </html>
