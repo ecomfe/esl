@@ -226,6 +226,19 @@ var esl;
         }
     };
 
+    /**
+     * 创建 script element
+     *
+     * @param {string} moduleId 模块的Id.
+     * @param {string} url 模块的地址.
+     * @return {Element}
+     */
+    globalRequire.createNode = function (moduleId, url) {
+        var script = document.createElement('script');
+        script.async = true;
+        return script;
+    };
+
     // #begin-ignore
     /**
      * 超时提醒函数
@@ -305,7 +318,7 @@ var esl;
      * 完成模块预定义，此时处理的模块是匿名define的模块
      *
      * @inner
-     * @param {string} currentId 匿名define的模块的id
+     * @param {string} ids 匿名define的模块的id
      */
     function modCompletePreDefine(ids) {
         // HACK: 这里在IE下有个性能陷阱，不能使用任何变量。
@@ -824,7 +837,6 @@ var esl;
     function nativeAsyncRequire(ids, callback, baseId) {
         var isCallbackCalled = 0;
 
-        var idsNeedToLoad = [];
         each(ids, function (id) {
             if (!(BUILDIN_MODULE[id] || modIs(id, MODULE_DEFINED))) {
                 modAddDefinedListener(id, tryFinishRequire);
@@ -948,7 +960,7 @@ var esl;
             }
 
             loadingURL4Modules[moduleSrc].push(moduleId);
-            createScript(moduleSrc, function () {
+            createScript(moduleSrc, moduleId, function () {
                 if (shimConf) {
                     var exports;
                     if (typeof shimConf.init === 'function') {
@@ -1173,7 +1185,7 @@ var esl;
             each(
                 mappingIdIndex,
                 function (item) {
-                    if (item != lastMapItem) {
+                    if (item != lastMapItem) {    // eslint-disable-line
                         item.v = item.v.concat(lastMapItem.v);
                     }
                 }
@@ -1670,7 +1682,7 @@ var esl;
         headElement = baseElement.parentNode;
     }
 
-    function createScript(src, onload) {
+    function createScript(src, moduleId, onload) {
         if (loadingURLs[src]) {
             return;
         }
@@ -1682,10 +1694,9 @@ var esl;
         // 这里不挂接onerror的错误处理
         // 因为高级浏览器在devtool的console面板会报错
         // 再throw一个Error多此一举了
-        var script = document.createElement('script');
+        var script = globalRequire.createNode(moduleId, src);
         script.setAttribute('data-src', src);
         script.src = src;
-        script.async = true;
         if (script.readyState) {
             script.onreadystatechange = innerOnload;
         }
