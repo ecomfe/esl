@@ -1406,6 +1406,16 @@ var esl;
             return toUrl(id, baseId || '');
         };
 
+        /**
+         * 根据当前 require 路径 normalize 化 id
+         *
+         * @param {string} id 需要normalize的模块标识
+         * @return {string} normalize结果
+         */
+        req.normalize = function (id) {
+            return normalize(id, baseId);
+        };
+
         return req;
     }
 
