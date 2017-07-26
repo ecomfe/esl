@@ -9,6 +9,12 @@
 <!--script src="impl/needs/needs.js"></script-->
 <!--script src="impl/lsjs/lsjs.js"></script-->
 <script>
+require.createNode = function () {
+    var script = document.createElement('script');
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    return script;
+};
 require.config({
     waitSeconds: 5,
     urlArgs: 'urlArgs',
