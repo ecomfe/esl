@@ -413,6 +413,10 @@ input { font-size: 12px; width: 210px;}
         <td class="uncheck"></td>
     </tr>
     <tr>
+        <td><input value="issue70" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
         <th colspan="2" align="left">Custom Loader:</th>
     </tr>
     <tr>
@@ -856,15 +860,39 @@ require.config({
         ],
         'bundles/package/index': [
             'bundlesPackage'
+        ],
+        'zrender': [
+          'zrender/graphic/helper/smoothSpline'
         ]
     },
     packages:[
         {
             name: 'bundlesPackage',
             location: 'bundles/package'
+        },
+        {
+            name: 'zrender',
+            location: 'bundles/issue70',
+            main: 'zrender'
         }
     ]
 });
+
+function issue70(stateTd, callback) {
+    require(['zrender/graphic/helper/smoothSpline'], function (cat) {
+        if (hasModuleRequest('zrender/zrender')
+            && cat.name === 'zrender/graphic/helper/smoothSpline') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
 
 function simpleBundles(stateTd, callback) {
     require(['bundles/simple/cat', 'bundles/simple/plugin!resource'],
