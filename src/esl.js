@@ -183,7 +183,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.2.0-beta.1';
+    globalRequire.version = '2.2.0-beta.2';
 
     /**
      * loader名称
@@ -887,7 +887,6 @@ var esl;
     function nativeAsyncRequire(ids, callback, baseId) {
         var isCallbackCalled = 0;
 
-        var idsNeedToLoad = [];
         each(ids, function (id) {
             if (!(BUILDIN_MODULE[id] || modIs(id, MODULE_DEFINED))) {
                 modAddListener(id, MODULE_DEFINED, tryFinishRequire);
@@ -1386,6 +1385,41 @@ var esl;
     function createLocalRequire(baseId) {
         var requiredCache = {};
 
+        function parseIds(ids, flagState) {
+            // 分析是否有resource，取出pluginModule先
+            var pureModules = [];
+            var normalizedIds = [];
+
+            each(
+                ids,
+                function (id, i) {
+                    var idInfo = parseId(id);
+                    var absId = normalize(idInfo.mod, baseId);
+                    var resId = idInfo.res;
+                    var normalizedId = absId;
+
+                    if (resId) {
+                        var trueResId = absId + '!' + resId;
+                        if (resId.indexOf('.') !== 0 && bundlesIndex[trueResId]) {
+                            absId = normalizedId = trueResId;
+                        }
+                        else {
+                            normalizedId = null;
+                        }
+                    }
+
+                    normalizedIds[i] = normalizedId;
+                    modFlagAuto(absId, flagState);
+                    pureModules.push(absId);
+                }
+            );
+
+            return {
+                mods: pureModules,
+                ids: normalizedIds
+            };
+        }
+
         function req(requireId, callback) {
             if (typeof requireId === 'string') {
                 if (!requiredCache[requireId]) {
@@ -1406,42 +1440,16 @@ var esl;
             }
             
             if (requireId instanceof Array) {
-                // 分析是否有resource，取出pluginModule先
-                var pureModules = [];
-                var normalizedIds = [];
-
-                each(
-                    requireId,
-                    function (id, i) {
-                        var idInfo = parseId(id);
-                        var absId = normalize(idInfo.mod, baseId);
-                        var resId = idInfo.res;
-                        var normalizedId = absId;
-
-                        if (resId) {
-                            var trueResId = absId + '!' + resId;
-                            if (resId.indexOf('.') !== 0 && bundlesIndex[trueResId]) {
-                                absId = normalizedId = trueResId;
-                            }
-                            else {
-                                normalizedId = null;
-                            }
-                        }
-
-                        normalizedIds[i] = normalizedId;
-                        modFlagAuto(absId, MODULE_DEFINED);
-                        pureModules.push(absId);
-                    }
-                );
+                var parseResult = parseIds(requireId, MODULE_DEFINED);
 
                 // 加载模块
                 nativeAsyncRequire(
-                    pureModules,
+                    parseResult.mods,
                     function () {
                         /* jshint ignore:start */
-                        each(normalizedIds, function (id, i) {
+                        each(parseResult.ids, function (id, i) {
                             if (id == null) {
-                                id = normalizedIds[i] = normalize(requireId[i], baseId);
+                                id = parseResult.ids[i] = normalize(requireId[i], baseId);
                                 modFlagAuto(id, MODULE_DEFINED);
                             }
                         });
@@ -1450,7 +1458,7 @@ var esl;
                         // modAutoDefine中，factory invoke可能发生错误
                         // 从而导致nativeAsyncRequire没有被调用，callback没挂上
                         // 所以nativeAsyncRequire要先运行
-                        nativeAsyncRequire(normalizedIds, callback, baseId);
+                        nativeAsyncRequire(parseResult.ids, callback, baseId);
                         modAutoDefine();
                     },
                     baseId
@@ -1479,34 +1487,6 @@ var esl;
          * @param {Function=} callback 加载完成的回调函数
          */
         req.fetch = function (ids, callback) {
-            var pureModules = [];
-            var normalizedIds = [];
-
-            each(
-                ids,
-                function (id, i) {
-                    var idInfo = parseId(id);
-                    var absId = normalize(idInfo.mod, baseId);
-                    var resId = idInfo.res;
-                    var normalizedId = absId;
-
-                    if (resId) {
-                        var trueResId = absId + '!' + resId;
-                        if (resId.indexOf('.') !== 0 && bundlesIndex[trueResId]) {
-                            absId = normalizedId = trueResId;
-                        }
-                        else {
-                            normalizedId = null;
-                        }
-                    }
-
-                    normalizedIds[i] = normalizedId;
-                    modFlagAuto(absId, MODULE_PREPARED);
-                    pureModules.push(absId);
-                    modAddListener(absId, MODULE_PREPARED, fetchFinish);
-                }
-            );
-
             var finishedLen = 0;
             function fetchFinish() {
                 finishedLen++;
@@ -1515,10 +1495,13 @@ var esl;
                 }
             }
 
+            var parseResult = parseIds(ids, MODULE_PREPARED);
+            each(parseResult.mods, function (id) {
+                modAddListener(id, MODULE_PREPARED, fetchFinish);
+            });
+            
             // 加载模块
-            nativeAsyncRequire(
-                pureModules
-            );
+            nativeAsyncRequire(parseResult.mods);
 
             modAutoDefine();
         };
