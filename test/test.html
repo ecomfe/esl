@@ -1698,7 +1698,6 @@ function userDefineCustomLoaderCheckState(stateTd, callback) {
 <script>
 require.config({
     onNodeCreated: function (script, config, id, src) {
-        console.log(id)
         if (id.indexOf('node-created-hook/index') === 0) {
             script.setAttribute('data-hookflag', '1');
         }
