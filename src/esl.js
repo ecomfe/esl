@@ -1226,7 +1226,7 @@ var esl;
         bundlesIndex = {};
         /* eslint-disable no-use-before-define */
         function bundlesIterator(id) {
-            bundlesIndex[resolvePackageId(id)] = key;
+            bundlesIndex[resolvePackageId(id)] = normalize(key);
         }
         /* eslint-enable no-use-before-define */
         for (var key in requireConf.bundles) {
