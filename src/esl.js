@@ -114,6 +114,8 @@ var esl;
 
         onModulePrepared: null,
         onModulePreDefined: null,
+        onModuleDefined: null,
+        onModuleAnalyzed: null,
         onNodeCreated: null
     };
 
@@ -450,13 +452,14 @@ var esl;
                 factory    : factory,
                 exports    : {},
                 config     : moduleConfigGetter,
-                state      : MODULE_PRE_DEFINED,
+                state      : 0,
                 require    : createLocalRequire(id),
                 depMs      : [],
                 depMkv     : {},
                 depRs      : [],
                 hang       : 0
             };
+            modSetState(id, MODULE_PRE_DEFINED);
         }
     }
 
@@ -553,7 +556,7 @@ var esl;
             }
         });
 
-        mod.state = MODULE_ANALYZED;
+        modSetState(id, MODULE_ANALYZED);
         modInitFactoryInvoker(id);
         nativeAsyncRequire(requireModules);
         depResources.length && mod.require(
@@ -796,6 +799,19 @@ var esl;
     }
 
     /**
+     * 用户定义状态变化的钩子与状态值的映射表
+     *
+     * @inner
+     * @type {Object}
+     */
+    var USER_HOOK_STATE_MAP = {};
+    USER_HOOK_STATE_MAP[MODULE_PRE_DEFINED] = 'onModulePreDefined';
+    USER_HOOK_STATE_MAP[MODULE_DEFINED] = 'onModuleDefined';
+    USER_HOOK_STATE_MAP[MODULE_PREPARED] = 'onModulePrepared';
+    USER_HOOK_STATE_MAP[MODULE_ANALYZED] = 'onModuleAnalyzed';
+
+
+    /**
      * 设置模块状态
      * 该函数会触发模块状态变化的事件
      *
@@ -808,7 +824,8 @@ var esl;
             return;
         }
 
-        modModules[id].state = state;
+        var mod = modModules[id];
+        mod.state = state;
 
         var listeners = modListeners[state][id] || [];
         var len = listeners.length;
@@ -821,6 +838,12 @@ var esl;
         // 清理listeners
         listeners.length = 0;
         modListeners[state][id] = null;
+
+        // call user hook
+        var userHook = requireConf[USER_HOOK_STATE_MAP[state]];
+        if (typeof userHook === 'function') {
+            userHook(mod.id, mod.deps, mod.factory);
+        }
     }
 
     /**

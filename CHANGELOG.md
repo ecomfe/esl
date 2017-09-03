@@ -5,7 +5,7 @@
 + 新特性：增加`addLoader`方法，允许自定义加载过程
 + 新特性：增加`onNodeCreated` Hook，允许用户为加载的script元素扩展属性
 + 新特性：增加`require.fetch`方法，预取但不定义模块
-+ 新特性：增加`onModulePreDefined`和`onModulePrepared` Hook，用于主进程与Worker等其他环境传递模块
++ 新特性：增加模块状态相关的Hook，包括`onModulePreDefined`、`onModuleAnalyzed`、`onModulePrepared`、`onModuleDefined`
 + bug修复：bundle为packages时，请求地址不正确
 
 2.1.6

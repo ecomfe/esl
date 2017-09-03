@@ -1718,22 +1718,48 @@ function checkOnNodeCreated(stateTd, callback) {
 }
 </script>
 <script>
+var preparedMods = {};
+var definedMods = {};
+var preDefinedMods = {};
+var analyzedMods = {};
+
+require.config({
+    onModuleDefined: function (id, deps, factory) {
+        definedMods[id] = 1;
+    },
+    
+    onModulePrepared: function (id, deps, factory) {
+        preparedMods[id] = 1;
+    },
+
+    onModulePreDefined: function (id, deps, factory) {
+        preDefinedMods[id] = 1;
+    },
+
+    onModuleAnalyzed: function (id, deps, factory) {
+        console.log(1)
+        analyzedMods[id] = 1;
+    }
+});
+
 function justFetch(stateTd, callback) {
     var isExpect = true;
     require.fetch(['just-fetch/index'], function () {
-        isExpect = isExpect && hasModuleRequest('just-fetch/index');
-        isExpect = isExpect && hasModuleRequest('just-fetch/cat');
-        try {
-            //require('just-fetch/index');
-            //isExpect = false;
-        }
-        catch (ex) {}
+        setTimeout(function () {
+            isExpect = isExpect && hasModuleRequest('just-fetch/index');
+            isExpect = isExpect && hasModuleRequest('just-fetch/cat');
+            isExpect = isExpect 
+                && preDefinedMods['just-fetch/index'] && preDefinedMods['just-fetch/cat']
+                && analyzedMods['just-fetch/index'] && analyzedMods['just-fetch/cat']
+                && preparedMods['just-fetch/index'] && preparedMods['just-fetch/cat']
+                && !definedMods['just-fetch/index'] && !definedMods['just-fetch/cat'];
 
-        require(['just-fetch/index'], function (index) {
-            isExpect = isExpect && index.check();
-            stateTd.className = isExpect ? 'pass' : 'fail';
-            callback();
-        });
+                require(['just-fetch/index'], function (index) {
+                    isExpect = isExpect && index.check();
+                    stateTd.className = isExpect ? 'pass' : 'fail';
+                    callback();
+                });
+        }, 10);
     });
 }
 </script>
