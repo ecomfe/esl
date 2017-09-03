@@ -326,6 +326,10 @@ input { font-size: 12px; width: 210px;}
         <td><input value="checkOnNodeCreated" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="justFetch" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 </table>
 <table>
     <tr>
@@ -1711,6 +1715,26 @@ function checkOnNodeCreated(stateTd, callback) {
             stateTd.className = 'fail';
         }
         callback();
+    });
+}
+</script>
+<script>
+function justFetch(stateTd, callback) {
+    var isExpect = true;
+    require.fetch(['just-fetch/index'], function () {
+        isExpect = isExpect && hasModuleRequest('just-fetch/index');
+        isExpect = isExpect && hasModuleRequest('just-fetch/cat');
+        try {
+            //require('just-fetch/index');
+            //isExpect = false;
+        }
+        catch (ex) {}
+
+        require(['just-fetch/index'], function (index) {
+            isExpect = isExpect && index.check();
+            stateTd.className = isExpect ? 'pass' : 'fail';
+            callback();
+        });
     });
 }
 </script>

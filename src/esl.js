@@ -49,7 +49,7 @@ var esl;
      * @inner
      * @type {Object}
      */
-    var modAutoDefineModules = {};
+    var modAutos = {};
 
     /**
      * 标记模块自动进行定义
@@ -57,9 +57,9 @@ var esl;
      * @inner
      * @param {string} id 模块id
      */
-    function modFlagAutoDefine(id) {
-        if (!modIs(id, MODULE_DEFINED)) {
-            modAutoDefineModules[id] = 1;
+    function modFlagAuto(id, state) {
+        if (!modIs(id, state)) {
+            modAutos[id] = Math.max(modAutos[id] || 0, state);
         }
     }
 
@@ -111,6 +111,9 @@ var esl;
         // #end-ignore
         bundles    : {},
         urlArgs    : {},
+
+        onModulePrepared: null,
+        onModulePreDefined: null,
         onNodeCreated: null
     };
 
@@ -196,6 +199,14 @@ var esl;
     globalRequire.toUrl = actualGlobalRequire.toUrl;
 
     /**
+     * 加载模块。load only，不执行factory define
+     *
+     * @param {Array} ids 模块id数组，
+     * @param {Function=} callback 加载完成的回调函数
+     */
+    globalRequire.fetch = actualGlobalRequire.fetch;
+
+    /**
      * 模块状态枚举
      *
      * @type {Object}
@@ -275,8 +286,10 @@ var esl;
             }
         }
 
-        for (var id in modAutoDefineModules) {
-            checkError(id, 1);
+        for (var id in modAutos) {
+            if (modAutos[id] === MODULE_DEFINED) {
+                checkError(id, 1);
+            }
         }
 
         if (hangModules.length || missModules.length) {
@@ -562,10 +575,17 @@ var esl;
      * @inner
      */
     function modAutoDefine() {
-        for (var id in modAutoDefineModules) {
-            modPrepare(id);
-            modUpdatePreparedState(id);
-            modTryInvokeFactory(id);
+        for (var id in modAutos) {
+            var action = modAutos[id];
+
+            if (action >= MODULE_PREPARED) {
+                modPrepare(id);
+                modUpdatePreparedState(id);
+            }
+
+            if (action >= MODULE_DEFINED) {
+                modTryInvokeFactory(id);
+            }
         }
     }
 
@@ -612,8 +632,8 @@ var esl;
             );
             /* jshint ignore:end */
 
-            if (prepared && !modIs(id, MODULE_PREPARED)) {
-                mod.state = MODULE_PREPARED;
+            if (prepared) {
+                modSetState(id, MODULE_PREPARED);
             }
             updatingModules[id] = 0;
             return prepared;
@@ -742,47 +762,55 @@ var esl;
     }
 
     /**
-     * 模块定义完成事件监听器容器
+     * 模块状态变化事件监听器容器
      *
      * @inner
      * @type {Object}
      */
-    var modDefinedListeners = {};
+    var modListeners = {};
+    modListeners[MODULE_ANALYZED] = {};
+    modListeners[MODULE_DEFINED] = {};
+    modListeners[MODULE_PRE_DEFINED] = {};
+    modListeners[MODULE_PREPARED] = {};
 
     /**
-     * 添加模块定义完成时间的监听器
+     * 添加模块状态变化的事件监听器
      *
      * @inner
      * @param {string} id 模块标识
+     * @param {number} state 模块状态
      * @param {Function} listener 监听函数
      */
-    function modAddDefinedListener(id, listener) {
-        if (modIs(id, MODULE_DEFINED)) {
+    function modAddListener(id, state, listener) {
+        if (modIs(id, state)) {
             listener();
             return;
         }
 
-        var listeners = modDefinedListeners[id];
+        var listeners = modListeners[state][id];
         if (!listeners) {
-            listeners = modDefinedListeners[id] = [];
+            listeners = modListeners[state][id] = [];
         }
 
         listeners.push(listener);
     }
 
     /**
-     * 模块状态切换为定义完成
-     * 因为需要触发事件，MODULE_DEFINED状态切换通过该函数
+     * 设置模块状态
+     * 该函数会触发模块状态变化的事件
      *
      * @inner
      * @param {string} id 模块标识
+     * @param {number} state 模块状态
      */
-    function modDefined(id) {
-        var mod = modModules[id];
-        mod.state = MODULE_DEFINED;
-        delete modAutoDefineModules[id];
+    function modSetState(id, state) {
+        if (modIs(id, state)) {
+            return;
+        }
 
-        var listeners = modDefinedListeners[id] || [];
+        modModules[id].state = state;
+
+        var listeners = modListeners[state][id] || [];
         var len = listeners.length;
         while (len--) {
             // 这里不做function类型的检测
@@ -792,7 +820,18 @@ var esl;
 
         // 清理listeners
         listeners.length = 0;
-        modDefinedListeners[id] = null;
+        modListeners[state][id] = null;
+    }
+
+    /**
+     * 模块状态切换为定义完成
+     *
+     * @inner
+     * @param {string} id 模块标识
+     */
+    function modDefined(id) {
+        delete modAutos[id];
+        modSetState(id, MODULE_DEFINED);
     }
 
     /**
@@ -828,7 +867,7 @@ var esl;
         var idsNeedToLoad = [];
         each(ids, function (id) {
             if (!(BUILDIN_MODULE[id] || modIs(id, MODULE_DEFINED))) {
-                modAddDefinedListener(id, tryFinishRequire);
+                modAddListener(id, MODULE_DEFINED, tryFinishRequire);
 
                 var loaderValue;
                 var context = {
@@ -1342,7 +1381,8 @@ var esl;
 
                 return requiredCache[requireId];
             }
-            else if (requireId instanceof Array) {
+            
+            if (requireId instanceof Array) {
                 // 分析是否有resource，取出pluginModule先
                 var pureModules = [];
                 var normalizedIds = [];
@@ -1366,7 +1406,7 @@ var esl;
                         }
 
                         normalizedIds[i] = normalizedId;
-                        modFlagAutoDefine(absId);
+                        modFlagAuto(absId, MODULE_DEFINED);
                         pureModules.push(absId);
                     }
                 );
@@ -1379,7 +1419,7 @@ var esl;
                         each(normalizedIds, function (id, i) {
                             if (id == null) {
                                 id = normalizedIds[i] = normalize(requireId[i], baseId);
-                                modFlagAutoDefine(id);
+                                modFlagAuto(id, MODULE_DEFINED);
                             }
                         });
                         /* jshint ignore:end */
@@ -1392,6 +1432,7 @@ var esl;
                     },
                     baseId
                 );
+
                 modAutoDefine();
             }
         }
@@ -1405,6 +1446,58 @@ var esl;
          */
         req.toUrl = function (id) {
             return toUrl(id, baseId || '');
+        };
+
+        /**
+         * 加载模块。load only，不执行factory define
+         *
+         * @inner
+         * @param {Array} ids 模块id数组，
+         * @param {Function=} callback 加载完成的回调函数
+         */
+        req.fetch = function (ids, callback) {
+            var pureModules = [];
+            var normalizedIds = [];
+
+            each(
+                ids,
+                function (id, i) {
+                    var idInfo = parseId(id);
+                    var absId = normalize(idInfo.mod, baseId);
+                    var resId = idInfo.res;
+                    var normalizedId = absId;
+
+                    if (resId) {
+                        var trueResId = absId + '!' + resId;
+                        if (resId.indexOf('.') !== 0 && bundlesIndex[trueResId]) {
+                            absId = normalizedId = trueResId;
+                        }
+                        else {
+                            normalizedId = null;
+                        }
+                    }
+
+                    normalizedIds[i] = normalizedId;
+                    modFlagAuto(absId, MODULE_PREPARED);
+                    pureModules.push(absId);
+                    modAddListener(absId, MODULE_PREPARED, fetchFinish);
+                }
+            );
+
+            var finishedLen = 0;
+            function fetchFinish() {
+                finishedLen++;
+                if (finishedLen >= ids.length) {
+                    callback();
+                }
+            }
+
+            // 加载模块
+            nativeAsyncRequire(
+                pureModules
+            );
+
+            modAutoDefine();
         };
 
         return req;
