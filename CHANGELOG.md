@@ -1,4 +1,12 @@
 
+2.2.0
+-------
+
++ 新特性：增加`addLoader`方法，允许自定义加载过程
++ 新特性：增加`onNodeCreated` Hook，允许用户为加载的script元素扩展属性
++ 新特性：增加`onModulePreDefined`和`onModulePrepared` Hook，用于主进程与Worker等其他环境传递模块
++ bug修复：bundle为packages时，请求地址不正确
+
 2.1.6
 -------
 
