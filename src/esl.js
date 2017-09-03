@@ -110,7 +110,8 @@ var esl;
         waitSeconds: 0,
         // #end-ignore
         bundles    : {},
-        urlArgs    : {}
+        urlArgs    : {},
+        onNodeCreated: null
     };
 
     /**
@@ -948,7 +949,7 @@ var esl;
             }
 
             loadingURL4Modules[moduleSrc].push(moduleId);
-            createScript(moduleSrc, function () {
+            createScript(moduleSrc, moduleId, function () {
                 if (shimConf) {
                     var exports;
                     if (typeof shimConf.init === 'function') {
@@ -1076,7 +1077,7 @@ var esl;
                     if (oldValue instanceof Array) {
                         oldValue.push.apply(oldValue, newValue);
                     }
-                    else if (typeof oldValue === 'object') {
+                    else if (oldValue && typeof oldValue === 'object') {
                         for (var k in newValue) {
                             oldValue[k] = newValue[k];
                         }
@@ -1670,7 +1671,7 @@ var esl;
         headElement = baseElement.parentNode;
     }
 
-    function createScript(src, onload) {
+    function createScript(src, moduleId, onload) {
         if (loadingURLs[src]) {
             return;
         }
@@ -1691,6 +1692,11 @@ var esl;
         }
         else {
             script.onload = innerOnload;
+        }
+
+        var onNodeCreated = requireConf.onNodeCreated;
+        if (typeof onNodeCreated === 'function') {
+            onNodeCreated(script, requireConf, moduleId, src);
         }
 
         function innerOnload() {

@@ -74,6 +74,19 @@ function hasModuleRequest(moduleId) {
 
     return false;
 }
+
+function findScriptByModuleId(moduleId) {
+    var scripts = document.getElementsByTagName('script');
+    var len = scripts.length;
+
+    while (len--) {
+        if (scripts[len].getAttribute('data-src') == require.toUrl(moduleId + '.js')) {
+            return scripts[len];
+        }
+    }
+
+    return null;
+}
 </script>
 
 <style>
@@ -307,6 +320,10 @@ input { font-size: 12px; width: 210px;}
     </tr>
     <tr>
         <td><input value="complexProcessWithResource2" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="checkOnNodeCreated" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
 </table>
@@ -1671,6 +1688,29 @@ function userDefineCustomLoaderCheckState(stateTd, callback) {
         if (typeof callback == 'function') {
             setTimeout(callback, 1);
         }
+    });
+}
+</script>
+<script>
+require.config({
+    onNodeCreated: function (script, config, id, src) {
+        console.log(id)
+        if (id.indexOf('node-created-hook/index') === 0) {
+            script.setAttribute('data-hookflag', '1');
+        }
+    }
+});
+function checkOnNodeCreated(stateTd, callback) {
+    require(['node-created-hook/index'], function () {
+        if (findScriptByModuleId('node-created-hook/index').getAttribute('data-hookflag') === '1'
+            && findScriptByModuleId('node-created-hook/cat').getAttribute('data-hookflag') !== '1'
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+        callback();
     });
 }
 </script>
