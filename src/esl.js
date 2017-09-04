@@ -972,7 +972,7 @@ var esl;
     function loadModule(moduleId, moduleSrc) {
         loadingModules[moduleId] = 1;
 
-        var loadId = bundlesIndex[moduleId] || moduleId;
+        var loadId = bundleIdRetrieve(moduleId) || moduleId;
         moduleSrc = moduleSrc || toUrl(loadId + '.js');
 
         // 初始化相关 shim 的配置
@@ -1055,7 +1055,7 @@ var esl;
      */
     function loadResource(pluginAndResource, baseId) {
         /* eslint-disable no-use-before-define */
-        var bundleModuleId = bundlesIndex[pluginAndResource];
+        var bundleModuleId = bundleIdRetrieve(pluginAndResource);
         if (bundleModuleId) {
             loadModule(bundleModuleId);
             return;
@@ -1188,6 +1188,8 @@ var esl;
      */
     var bundlesIndex;
 
+    var bundlesRegExpIndex;
+
     /**
      * urlArgs内部索引
      *
@@ -1286,14 +1288,44 @@ var esl;
 
         // create bundles index
         bundlesIndex = {};
-        /* eslint-disable no-use-before-define */
-        function bundlesIterator(id) {
-            bundlesIndex[resolvePackageId(id)] = normalize(key);
-        }
-        /* eslint-enable no-use-before-define */
+        bundlesRegExpIndex = [];
         for (var key in requireConf.bundles) {
             each(requireConf.bundles[key], bundlesIterator);
         }
+
+        /* eslint-disable no-use-before-define */
+        function bundlesIterator(id) {
+            if (id instanceof RegExp) {
+                bundlesRegExpIndex.push({
+                    rule: id,
+                    target: key
+                });
+            }
+            else {
+                bundlesIndex[resolvePackageId(id)] = normalize(key);
+            }
+        }
+        /* eslint-enable no-use-before-define */
+    }
+
+    /**
+     * 检索对应的bundle模块
+     * 
+     * @inner
+     * @param {string} id 模块id
+     * @return {string}
+     */
+    function bundleIdRetrieve(id) {
+        var bundleId = bundlesIndex[id];
+        
+        bundleId || each(bundlesRegExpIndex, function (index) {
+            if (index.rule.test(id)) {
+                bundleId = index.target;
+                return false;
+            }
+        });
+
+        return bundleId;
     }
 
     /**
@@ -1400,7 +1432,7 @@ var esl;
 
                     if (resId) {
                         var trueResId = absId + '!' + resId;
-                        if (resId.indexOf('.') !== 0 && bundlesIndex[trueResId]) {
+                        if (resId.indexOf('.') !== 0 && bundleIdRetrieve(trueResId)) {
                             absId = normalizedId = trueResId;
                         }
                         else {
