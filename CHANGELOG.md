@@ -3,6 +3,7 @@
 -------
 
 + 新特性：增加`addLoader`方法，允许自定义加载过程
++ 新特性：bundles配置支持正则匹配
 + 新特性：增加`onNodeCreated` Hook，允许用户为加载的script元素扩展属性
 + 新特性：增加`require.fetch`方法，预取但不定义模块
 + 新特性：增加模块状态相关的Hook，包括`onModulePreDefined`、`onModuleAnalyzed`、`onModulePrepared`、`onModuleDefined`
