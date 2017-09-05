@@ -1798,17 +1798,23 @@ var esl;
     }
 
     // 暴露全局对象
+    // 可能碰到其他形式的loader，所以，不要覆盖人家
     if (!define) {
         define = globalDefine;
 
-        // 可能碰到其他形式的loader，所以，不要覆盖人家
-        if (!require) {
+        if (typeof require !== 'function') {
+            globalRequire.config(require);
             require = globalRequire;
         }
 
-        // 如果存在其他版本的esl，在define那里就判断过了，不会进入这个分支
-        // 所以这里就不判断了，直接写
-        esl = globalRequire;
+        if (typeof esl !== 'function') {
+            globalRequire.config(esl);
+            esl = globalRequire;
+        }
+
+        if (typeof requirejs !== 'undefined' && typeof requirejs !== 'function') {
+            globalRequire.config(requirejs);
+        }
     }
 
     // data-main

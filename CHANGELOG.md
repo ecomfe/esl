@@ -7,7 +7,8 @@
 + 新特性：增加`onNodeCreated` Hook，允许用户为加载的script元素扩展属性
 + 新特性：增加`require.fetch`方法，预取但不定义模块
 + 新特性：增加模块状态相关的Hook，包括`onModulePreDefined`、`onModuleAnalyzed`、`onModulePrepared`、`onModuleDefined`
-+ 变更：修改了waitSeconds超时Error的message信息
++ 新特性：loader加载之前，允许通过对象类型变量`esl`、`require`、`requirejs`预声明loader配置
++ 变更：修改了waitSeconds超时的error message信息格式
 + bug修复：bundle为packages时，请求地址不正确
 
 2.1.6
