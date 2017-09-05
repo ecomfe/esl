@@ -110,13 +110,7 @@ var esl;
         waitSeconds: 0,
         // #end-ignore
         bundles    : {},
-        urlArgs    : {},
-
-        onModulePrepared: null,
-        onModulePreDefined: null,
-        onModuleDefined: null,
-        onModuleAnalyzed: null,
-        onNodeCreated: null
+        urlArgs    : {}
     };
 
     /**
@@ -183,14 +177,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.2.0-beta.2';
-
-    /**
-     * loader名称
-     *
-     * @type {string}
-     */
-    globalRequire.loader = 'esl';
+    globalRequire.version = '2.2.0-beta.3';
 
     /**
      * 将模块标识转换成相对的url
@@ -289,18 +276,17 @@ var esl;
         }
 
         for (var id in modAutos) {
-            if (modAutos[id] === MODULE_DEFINED) {
+            if (modAutos[id] >= MODULE_DEFINED) {
                 checkError(id, 1);
             }
         }
 
         if (hangModules.length || missModules.length) {
             throw new Error(
-                '[MODULE_TIMEOUT]Hang('
+                '[MODULE_TIMEOUT]Hang: '
                 + (hangModules.join(', ') || 'none')
-                + ') Miss('
+                + '; Miss: '
                 + (missModules.join(', ') || 'none')
-                + ')'
             );
         }
 
@@ -771,10 +757,10 @@ var esl;
      * @type {Object}
      */
     var modListeners = {};
-    modListeners[MODULE_ANALYZED] = {};
-    modListeners[MODULE_DEFINED] = {};
-    modListeners[MODULE_PRE_DEFINED] = {};
-    modListeners[MODULE_PREPARED] = {};
+    modListeners[MODULE_ANALYZED] = {':hook': 'onModuleAnalyzed'};
+    modListeners[MODULE_DEFINED] = {':hook': 'onModuleDefined'};
+    modListeners[MODULE_PRE_DEFINED] = {':hook': 'onModulePreDefined'};
+    modListeners[MODULE_PREPARED] = {':hook': 'onModulePrepared'};
 
     /**
      * 添加模块状态变化的事件监听器
@@ -799,19 +785,6 @@ var esl;
     }
 
     /**
-     * 用户定义状态变化的钩子与状态值的映射表
-     *
-     * @inner
-     * @type {Object}
-     */
-    var USER_HOOK_STATE_MAP = {};
-    USER_HOOK_STATE_MAP[MODULE_PRE_DEFINED] = 'onModulePreDefined';
-    USER_HOOK_STATE_MAP[MODULE_DEFINED] = 'onModuleDefined';
-    USER_HOOK_STATE_MAP[MODULE_PREPARED] = 'onModulePrepared';
-    USER_HOOK_STATE_MAP[MODULE_ANALYZED] = 'onModuleAnalyzed';
-
-
-    /**
      * 设置模块状态
      * 该函数会触发模块状态变化的事件
      *
@@ -827,20 +800,15 @@ var esl;
         var mod = modModules[id];
         mod.state = state;
 
-        var listeners = modListeners[state][id] || [];
-        var len = listeners.length;
-        while (len--) {
-            // 这里不做function类型的检测
-            // 因为listener都是通过modOn传入的，modOn为内部调用
-            listeners[len]();
-        }
+        each(modListeners[state][id], function (listener) {
+            listener();
+        });
 
         // 清理listeners
-        listeners.length = 0;
         modListeners[state][id] = null;
 
         // call user hook
-        var userHook = requireConf[USER_HOOK_STATE_MAP[state]];
+        var userHook = requireConf[modListeners[state][':hook']];
         if (typeof userHook === 'function') {
             userHook(mod.id, mod.deps, mod.factory);
         }
@@ -1122,23 +1090,22 @@ var esl;
      */
     globalRequire.config = function (conf) {
         if (conf) {
-            for (var key in requireConf) {
+            for (var key in conf) {
                 var newValue = conf[key];
                 var oldValue = requireConf[key];
 
-                if (!newValue) {
-                    continue;
+                if (key.indexOf('on') === 0) {
+                    requireConf[key] = newValue;
                 }
-
-                if (key === 'urlArgs' && typeof newValue === 'string') {
+                else if (key === 'urlArgs' && typeof newValue === 'string') {
                     requireConf.urlArgs['*'] = newValue;
                 }
-                else {
-                    // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
-                    if (oldValue instanceof Array) {
-                        oldValue.push.apply(oldValue, newValue);
-                    }
-                    else if (oldValue && typeof oldValue === 'object') {
+                // 简单的多处配置还是需要支持，所以配置实现为支持二级mix
+                else if (oldValue instanceof Array) {
+                    oldValue.push.apply(oldValue, newValue);
+                }
+                else if (oldValue != null) {
+                    if (typeof oldValue === 'object') {
                         for (var k in newValue) {
                             oldValue[k] = newValue[k];
                         }
@@ -1207,7 +1174,19 @@ var esl;
      * @return {Array} 索引对象
      */
     function createKVSortedIndex(value, allowAsterisk) {
-        var index = kv2List(value, 1, allowAsterisk);
+        var index = [];
+        for (var key in value) {
+            if (value.hasOwnProperty(key)) {
+                index.push({
+                    k: key,
+                    v: value[key],
+                    reg: key === '*' && allowAsterisk
+                        ? /^/
+                        : createPrefixRegexp(key)
+                });
+            }
+        }
+
         index.sort(descSorterByKOrName);
         return index;
     }
@@ -1296,10 +1275,7 @@ var esl;
         /* eslint-disable no-use-before-define */
         function bundlesIterator(id) {
             if (id instanceof RegExp) {
-                bundlesRegExpIndex.push({
-                    rule: id,
-                    target: key
-                });
+                bundlesRegExpIndex.push([id, key]);
             }
             else {
                 bundlesIndex[resolvePackageId(id)] = normalize(key);
@@ -1319,8 +1295,8 @@ var esl;
         var bundleId = bundlesIndex[id];
         
         bundleId || each(bundlesRegExpIndex, function (index) {
-            if (index.rule.test(id)) {
-                bundleId = index.target;
+            if (index[0].test(id)) {
+                bundleId = index[1];
                 return false;
             }
         });
@@ -1674,38 +1650,6 @@ var esl;
             };
         }
     }
-
-    /**
-     * 将对象数据转换成数组，数组每项是带有k和v的Object
-     *
-     * @inner
-     * @param {Object} source 对象数据
-     * @param {boolean} keyMatchable key是否允许被前缀匹配
-     * @param {boolean} allowAsterisk 是否支持*匹配所有
-     * @return {Array.<Object>} 对象转换数组
-     */
-    function kv2List(source, keyMatchable, allowAsterisk) {
-        var list = [];
-        for (var key in source) {
-            if (source.hasOwnProperty(key)) {
-                var item = {
-                    k: key,
-                    v: source[key]
-                };
-                list.push(item);
-
-                if (keyMatchable) {
-                    item.reg = key === '*' && allowAsterisk
-                        ? /^/
-                        : createPrefixRegexp(key);
-                }
-            }
-        }
-
-        return list;
-    }
-
-
 
     /**
      * 创建id前缀匹配的正则对象
