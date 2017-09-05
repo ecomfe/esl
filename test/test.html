@@ -1754,25 +1754,25 @@ var definedMods = {};
 var preDefinedMods = {};
 var analyzedMods = {};
 
-require.config({
-    onModuleDefined: function (id, deps, factory) {
-        definedMods[id] = 1;
-    },
-    
-    onModulePrepared: function (id, deps, factory) {
-        preparedMods[id] = 1;
-    },
-
-    onModulePreDefined: function (id, deps, factory) {
-        preDefinedMods[id] = 1;
-    },
-
-    onModuleAnalyzed: function (id, deps, factory) {
-        analyzedMods[id] = 1;
-    }
-});
-
 function justFetch(stateTd, callback) {
+    require.config({
+        onModuleDefined: function (id, deps, factory) {
+            definedMods[id] = 1;
+        },
+        
+        onModulePrepared: function (id, deps, factory) {
+            preparedMods[id] = 1;
+        },
+
+        onModulePreDefined: function (id, deps, factory) {
+            preDefinedMods[id] = 1;
+        },
+
+        onModuleAnalyzed: function (id, deps, factory) {
+            analyzedMods[id] = 1;
+        }
+    });
+
     var isExpect = true;
     require.fetch(['just-fetch/index'], function () {
         setTimeout(function () {
