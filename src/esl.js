@@ -177,7 +177,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.2.0-beta.3';
+    globalRequire.version = '2.2.0-beta.4';
 
     /**
      * 将模块标识转换成相对的url
@@ -207,6 +207,47 @@ var esl;
         ANALYZED: MODULE_ANALYZED,
         PREPARED: MODULE_PREPARED,
         DEFINED: MODULE_DEFINED
+    };
+
+    var moduleChangeListeners = {};
+
+    globalRequire.listenModuleStateChange = function (id, state, listener) {
+        if (typeof listener === 'function'
+            && state >= MODULE_PRE_DEFINED && state <= MODULE_DEFINED
+        ) {
+            if (modIs(id, state)) {
+                var mod = modModules[id];
+                listener(mod.id, mod.deps, mod.factory);
+            }
+            else {
+                var listeners = moduleChangeListeners[id];
+                if (!listeners) {
+                    listeners = moduleChangeListeners[id] = {};
+                }
+
+                listeners[state] = listeners[state] || [];
+                listeners[state].push(listener);
+            }
+        }
+    };
+
+    globalRequire.unlistenModuleStateChange = function (id, state, listener) {
+        var listeners = moduleChangeListeners[id];
+
+        if (listeners) {
+            if (!listener) {
+                listeners[state] = null;
+            }
+            else {
+                var stateListeners = listeners[state];
+                var len = stateListeners && stateListeners.length;
+                while (len--) {
+                    if (stateListeners[len] === listener) {
+                        stateListeners.splice(len, 1);
+                    }
+                }
+            }
+        }
     };
 
     /**
@@ -812,6 +853,12 @@ var esl;
         if (typeof userHook === 'function') {
             userHook(mod.id, mod.deps, mod.factory);
         }
+
+        var listeners = moduleChangeListeners[id];
+        var stateListeners = listeners && listeners[state];
+        each(stateListeners, function (listener) {
+            listener(mod.id, mod.deps, mod.factory);
+        });
     }
 
     /**

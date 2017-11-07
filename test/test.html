@@ -330,6 +330,11 @@ input { font-size: 12px; width: 210px;}
         <td><input value="justFetch" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="justFetchUseListen" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    
 </table>
 <table>
     <tr>
@@ -1793,5 +1798,65 @@ function justFetch(stateTd, callback) {
     });
 }
 </script>
+
+<script>
+    var definedModsUseListen = {};
+    var preDefinedModsUseListen = {};
+    
+    function justFetchUseListen(stateTd, callback) {
+        require.listenModuleStateChange(
+            'just-fetch-use-listen/cat', 
+            require.ModuleState.PRE_DEFINED,
+            function (id, state, factory) {
+                preDefinedModsUseListen[id] = 1;
+            }
+        );
+        require.listenModuleStateChange(
+            'just-fetch-use-listen/cat', 
+            require.ModuleState.DEFINED,
+            function (id, state, factory) {
+                definedModsUseListen[id] = 1;
+            }
+        );
+        require.listenModuleStateChange(
+            'just-fetch-use-listen/index', 
+            require.ModuleState.DEFINED,
+            function (id, state, factory) {
+                definedModsUseListen[id] = 1;
+            }
+        );
+    
+        var isExpect = true;
+        require.fetch(['just-fetch-use-listen/index'], function () {
+            setTimeout(function () {
+                isExpect = isExpect && hasModuleRequest('just-fetch-use-listen/index');
+                isExpect = isExpect && hasModuleRequest('just-fetch-use-listen/cat');
+                isExpect = isExpect 
+                    && preDefinedModsUseListen['just-fetch-use-listen/cat']
+                    && !definedModsUseListen['just-fetch-use-listen/index'] && !definedModsUseListen['just-fetch-use-listen/cat'];
+
+                    require(['just-fetch-use-listen/index'], function (index) {
+                        setTimeout(function () {
+                            isExpect = isExpect && index.check() 
+                                && !preDefinedModsUseListen['just-fetch-use-listen/index']
+                                && definedModsUseListen['just-fetch-use-listen/index'] && definedModsUseListen['just-fetch-use-listen/cat'];
+
+                            require.listenModuleStateChange(
+                                'just-fetch-use-listen/index', 
+                                require.ModuleState.PRE_DEFINED,
+                                function (id, state, factory) {
+                                    preDefinedModsUseListen[id] = 1;
+                                }
+                            );
+
+                            isExpect = isExpect && preDefinedModsUseListen['just-fetch-use-listen/index'];
+                            stateTd.className = isExpect ? 'pass' : 'fail';
+                            callback();
+                        }, 10);
+                    });
+            }, 10);
+        });
+    }
+    </script>
 </body>
 </html>
