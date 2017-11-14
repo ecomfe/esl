@@ -730,6 +730,17 @@ var esl;
                     mod.invokeFactory = null;
                 }
                 catch (ex) {
+                    if (/^\[MODULE_MISS\]"([^"]+)/.test(ex.message)) {
+                        // 出错，则说明在factory的运行中，该require的模块是需要的
+                        // 所以把它加入强依赖中
+                        var hardCirclurDep = mod.depMkv[RegExp.$1];
+                        hardCirclurDep && (hardCirclurDep.hard = 1);
+
+                        // 如果是模块本身有问题导致的运行错误
+                        // 就不要把invoking置回去了，避免影响autoInvoke其他模块的初始化
+                        invoking = 0;
+                        return;
+                    }
                     mod.hang = 1;
                     throw ex;
                 }
@@ -1333,14 +1344,14 @@ var esl;
 
     /**
      * 检索对应的bundle模块
-     * 
+     *
      * @inner
      * @param {string} id 模块id
      * @return {string}
      */
     function bundleIdRetrieve(id) {
         var bundleId = bundlesIndex[id];
-        
+
         bundleId || each(bundlesRegExpIndex, function (index) {
             if (index[0].test(id)) {
                 bundleId = index[1];
@@ -1493,7 +1504,7 @@ var esl;
 
                 return requiredCache[requireId];
             }
-            
+
             if (requireId instanceof Array) {
                 var parseResult = parseIds(requireId, MODULE_DEFINED);
 
@@ -1554,7 +1565,7 @@ var esl;
             each(parseResult.mods, function (id) {
                 modAddListener(id, MODULE_PREPARED, fetchFinish);
             });
-            
+
             // 加载模块
             nativeAsyncRequire(parseResult.mods);
 
