@@ -212,6 +212,10 @@ input { font-size: 12px; width: 210px;}
         <td><input value="triangleDependency" type="button"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="factoryReinvoke" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
 </table>
 <table>
     <tr>
@@ -334,7 +338,7 @@ input { font-size: 12px; width: 210px;}
         <td><input value="justFetchUseListen" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
-    
+
 </table>
 <table>
     <tr>
@@ -1764,7 +1768,7 @@ function justFetch(stateTd, callback) {
         onModuleDefined: function (id, deps, factory) {
             definedMods[id] = 1;
         },
-        
+
         onModulePrepared: function (id, deps, factory) {
             preparedMods[id] = 1;
         },
@@ -1783,7 +1787,7 @@ function justFetch(stateTd, callback) {
         setTimeout(function () {
             isExpect = isExpect && hasModuleRequest('just-fetch/index');
             isExpect = isExpect && hasModuleRequest('just-fetch/cat');
-            isExpect = isExpect 
+            isExpect = isExpect
                 && preDefinedMods['just-fetch/index'] && preDefinedMods['just-fetch/cat']
                 && analyzedMods['just-fetch/index'] && analyzedMods['just-fetch/cat']
                 && preparedMods['just-fetch/index'] && preparedMods['just-fetch/cat']
@@ -1800,63 +1804,98 @@ function justFetch(stateTd, callback) {
 </script>
 
 <script>
-    var definedModsUseListen = {};
-    var preDefinedModsUseListen = {};
-    
-    function justFetchUseListen(stateTd, callback) {
-        require.listenModuleStateChange(
-            'just-fetch-use-listen/cat', 
-            require.ModuleState.PRE_DEFINED,
-            function (id, state, factory) {
-                preDefinedModsUseListen[id] = 1;
-            }
-        );
-        require.listenModuleStateChange(
-            'just-fetch-use-listen/cat', 
-            require.ModuleState.DEFINED,
-            function (id, state, factory) {
-                definedModsUseListen[id] = 1;
-            }
-        );
-        require.listenModuleStateChange(
-            'just-fetch-use-listen/index', 
-            require.ModuleState.DEFINED,
-            function (id, state, factory) {
-                definedModsUseListen[id] = 1;
-            }
-        );
-    
-        var isExpect = true;
-        require.fetch(['just-fetch-use-listen/index'], function () {
-            setTimeout(function () {
-                isExpect = isExpect && hasModuleRequest('just-fetch-use-listen/index');
-                isExpect = isExpect && hasModuleRequest('just-fetch-use-listen/cat');
-                isExpect = isExpect 
-                    && preDefinedModsUseListen['just-fetch-use-listen/cat']
-                    && !definedModsUseListen['just-fetch-use-listen/index'] && !definedModsUseListen['just-fetch-use-listen/cat'];
+var definedModsUseListen = {};
+var preDefinedModsUseListen = {};
 
-                    require(['just-fetch-use-listen/index'], function (index) {
-                        setTimeout(function () {
-                            isExpect = isExpect && index.check() 
-                                && !preDefinedModsUseListen['just-fetch-use-listen/index']
-                                && definedModsUseListen['just-fetch-use-listen/index'] && definedModsUseListen['just-fetch-use-listen/cat'];
+function justFetchUseListen(stateTd, callback) {
+    require.listenModuleStateChange(
+        'just-fetch-use-listen/cat',
+        require.ModuleState.PRE_DEFINED,
+        function (id, state, factory) {
+            preDefinedModsUseListen[id] = 1;
+        }
+    );
+    require.listenModuleStateChange(
+        'just-fetch-use-listen/cat',
+        require.ModuleState.DEFINED,
+        function (id, state, factory) {
+            definedModsUseListen[id] = 1;
+        }
+    );
+    require.listenModuleStateChange(
+        'just-fetch-use-listen/index',
+        require.ModuleState.DEFINED,
+        function (id, state, factory) {
+            definedModsUseListen[id] = 1;
+        }
+    );
 
-                            require.listenModuleStateChange(
-                                'just-fetch-use-listen/index', 
-                                require.ModuleState.PRE_DEFINED,
-                                function (id, state, factory) {
-                                    preDefinedModsUseListen[id] = 1;
-                                }
-                            );
+    var isExpect = true;
+    require.fetch(['just-fetch-use-listen/index'], function () {
+        setTimeout(function () {
+            isExpect = isExpect && hasModuleRequest('just-fetch-use-listen/index');
+            isExpect = isExpect && hasModuleRequest('just-fetch-use-listen/cat');
+            isExpect = isExpect
+                && preDefinedModsUseListen['just-fetch-use-listen/cat']
+                && !definedModsUseListen['just-fetch-use-listen/index'] && !definedModsUseListen['just-fetch-use-listen/cat'];
 
-                            isExpect = isExpect && preDefinedModsUseListen['just-fetch-use-listen/index'];
-                            stateTd.className = isExpect ? 'pass' : 'fail';
-                            callback();
-                        }, 10);
-                    });
-            }, 10);
-        });
-    }
-    </script>
+                require(['just-fetch-use-listen/index'], function (index) {
+                    setTimeout(function () {
+                        isExpect = isExpect && index.check()
+                            && !preDefinedModsUseListen['just-fetch-use-listen/index']
+                            && definedModsUseListen['just-fetch-use-listen/index'] && definedModsUseListen['just-fetch-use-listen/cat'];
+
+                        require.listenModuleStateChange(
+                            'just-fetch-use-listen/index',
+                            require.ModuleState.PRE_DEFINED,
+                            function (id, state, factory) {
+                                preDefinedModsUseListen[id] = 1;
+                            }
+                        );
+
+                        isExpect = isExpect && preDefinedModsUseListen['just-fetch-use-listen/index'];
+                        stateTd.className = isExpect ? 'pass' : 'fail';
+                        callback();
+                    }, 10);
+                });
+        }, 10);
+    });
+}
+</script>
+
+<script>
+function factoryReinvoke(stateTd, callback) {
+    require(['factory-re-invoke/index1', 'factory-re-invoke/index2'], function (index1, index2) {
+        stateTd.className = index1.check() && index2.check() && index2.name === 'factory-re-invoke/index2' && index1.name === 'factory-re-invoke/index1'
+            ? 'pass' : 'fail';
+        callback();
+    });
+    require(['factory-re-invoke/tiger']);
+}
+
+define('factory-re-invoke/index1', ['require','./tiger'], function (require) {
+    var tiger = require('./tiger');
+
+    return {
+        name: 'factory-re-invoke/index1',
+        check: function () {
+            return tiger.name === 'factory-re-invoke/tiger';
+        }
+    };
+});
+
+define('factory-re-invoke/index2', ['require', 'factory-re-invoke/index1'], function (require) {
+    var i1 = require('factory-re-invoke/index1');
+    return {
+        name: 'factory-re-invoke/index2',
+        check: function () {
+            return i1.name === 'factory-re-invoke/index1';
+        }
+    };
+});
+
+
+
+</script>
 </body>
 </html>

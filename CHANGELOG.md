@@ -10,6 +10,7 @@
 + 新特性：loader加载之前，允许通过对象类型变量`esl`、`require`、`requirejs`预声明loader配置
 + 变更：修改了waitSeconds超时的error message信息格式
 + bug修复：bundle为packages时，请求地址不正确
++ bug修复：一个模块同时被async require和做为其他模块的依赖时，factory运行可能失败。该问题为2.1.2引入
 
 2.1.6
 -------
