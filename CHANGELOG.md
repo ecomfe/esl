@@ -2,6 +2,7 @@
 2.2.0
 -------
 
++ 新特性：增加`undef`卸载模块方法
 + 新特性：增加`addLoader`方法，允许自定义加载过程
 + 新特性：bundles配置支持正则匹配
 + 新特性：增加`onNodeCreated` Hook，允许用户为加载的script元素扩展属性
