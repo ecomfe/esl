@@ -338,6 +338,10 @@ input { font-size: 12px; width: 210px;}
         <td><input value="justFetchUseListen" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="undefModule" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 
 </table>
 <table>
@@ -1893,9 +1897,43 @@ define('factory-re-invoke/index2', ['require', 'factory-re-invoke/index1'], func
         }
     };
 });
+</script>
 
+<script>
+function undefModule(stateTd, callback) {
+    require(['undef/index'], function (index) {
+        if (index.name !== 'undef/index') {
+            stateTd.className = 'fail';
+            callback();
+            return;
+        }
 
+        require.undef('undef/index');
+        require.undef('undef/cat');
 
+        try {
+            require('undef/index');
+            stateTd.className = 'fail';
+            callback();
+            return;
+        }
+        catch (ex) {
+        }
+
+        require.config({
+            paths: {
+                'undef/index': 'undef/other',
+                'undef/cat': 'undef/dog'
+            }
+        });
+
+        require(['undef/index'], function (other) {
+            stateTd.className = other.name === 'undef/other' && other.pet.name === 'undef/dog'
+                ? 'pass' : 'fail';
+            callback();
+        });
+    })
+}
 </script>
 </body>
 </html>

@@ -177,7 +177,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.2.0-beta.5';
+    globalRequire.version = '2.2.0';
 
     /**
      * 将模块标识转换成相对的url
@@ -248,6 +248,11 @@ var esl;
                 }
             }
         }
+    };
+
+    globalRequire.undef = function (id) {
+        delete loadingModules[id];
+        delete modModules[id];
     };
 
     /**
@@ -852,12 +857,15 @@ var esl;
         var mod = modModules[id];
         mod.state = state;
 
-        each(modListeners[state][id], function (listener) {
+        var listeners = modListeners[state][id];
+        // 清理listeners
+        modListeners[state][id] = null;
+
+        each(listeners, function (listener) {
             listener();
         });
 
-        // 清理listeners
-        modListeners[state][id] = null;
+
 
         // call user hook
         var userHook = requireConf[modListeners[state][':hook']];
@@ -865,7 +873,7 @@ var esl;
             userHook(mod.id, mod.deps, mod.factory);
         }
 
-        var listeners = moduleChangeListeners[id];
+        listeners = moduleChangeListeners[id];
         var stateListeners = listeners && listeners[state];
         each(stateListeners, function (listener) {
             listener(mod.id, mod.deps, mod.factory);
