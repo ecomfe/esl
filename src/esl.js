@@ -273,6 +273,20 @@ var esl;
         }
     };
 
+    /**
+     * 移除加载器
+     *
+     * @param {Function} loader 加载器函数
+     */
+    globalRequire.removeLoader = function (loader) {
+        var len = loaders.length;
+        while (len--) {
+            if (loader === loaders[len]) {
+                loaders.splice(len, 1);
+            }
+        }
+    };
+
     // #begin-ignore
     /**
      * 超时提醒函数
