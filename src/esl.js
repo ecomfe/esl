@@ -52,10 +52,19 @@ var esl;
     var modAutos = {};
 
     /**
+     * 正在加载的模块列表
+     *
+     * @inner
+     * @type {Object}
+     */
+    var loadingModules = {};
+
+    /**
      * 标记模块自动进行定义
      *
      * @inner
      * @param {string} id 模块id
+     * @param {number} state 模块的状态
      */
     function modFlagAuto(id, state) {
         if (!modIs(id, state)) {
@@ -100,17 +109,17 @@ var esl;
      * @type {Object}
      */
     var requireConf = {
+        /* eslint-disable */
         baseUrl    : './',
         paths      : {},
         config     : {},
         map        : {},
         packages   : [],
         shim       : {},
-        // #begin-ignore
         waitSeconds: 0,
-        // #end-ignore
         bundles    : {},
         urlArgs    : {}
+        /* eslint-enable */
     };
 
     /**
@@ -367,7 +376,7 @@ var esl;
      * 完成模块预定义，此时处理的模块是匿名define的模块
      *
      * @inner
-     * @param {string} currentId 匿名define的模块的id
+     * @param {string} ids 匿名define的模块的id
      */
     function modCompletePreDefine(ids) {
         // HACK: 这里在IE下有个性能陷阱，不能使用任何变量。
@@ -490,6 +499,7 @@ var esl;
         // depRs: 实际依赖的资源集合
         // ------------------------------------
         if (!modModules[id]) {
+            /* eslint-disable */
             modModules[id] = {
                 id         : id,
                 depsDec    : dependencies,
@@ -505,6 +515,7 @@ var esl;
                 depRs      : [],
                 hang       : 0
             };
+            /* eslint-enable */
             modSetState(id, MODULE_PRE_DEFINED);
         }
     }
@@ -683,8 +694,8 @@ var esl;
 
             if (prepared) {
                 modSetState(id, MODULE_PREPARED);
+                updatingModules[id] = 0;
             }
-            updatingModules[id] = 0;
             return prepared;
         }
     }
@@ -999,14 +1010,6 @@ var esl;
         }
     }
 
-    /**
-     * 正在加载的模块列表
-     *
-     * @inner
-     * @type {Object}
-     */
-    var loadingModules = {};
-
     var loadingURLs = {};
     var loadingURL4Modules = {};
 
@@ -1296,7 +1299,7 @@ var esl;
             each(
                 mappingIdIndex,
                 function (item) {
-                    if (item != lastMapItem) {
+                    if (item !== lastMapItem) {
                         item.v = item.v.concat(lastMapItem.v);
                     }
                 }
@@ -1893,7 +1896,7 @@ var esl;
         }
 
         if (typeof requirejs !== 'undefined' && typeof requirejs !== 'function') {
-            globalRequire.config(requirejs);
+            globalRequire.config(requirejs); // eslint-disable-line
         }
     }
 
