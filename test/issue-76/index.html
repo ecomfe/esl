@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>issue-76</title>
+    <script src="../impl/esl/esl.js"></script>
+    <style type="text/css">
+    #result {
+        width: 100px;
+        padding: 0 10px;
+        line-height: 1.5;
+    }
+    .pass { background: green; }
+    .fail { background: red; }
+    </style>
+</head>
+<body>
+    <div id="result">Loading...</div>
+    <script src="preload.js"></script>
+    <script>
+    var start = Date.now();
+    require(['common/dep', 'common/combine'], function () {
+        require(['common/bootstrap'], function () {
+            require(['startup'], function () {
+                var end = Date.now();
+                var diff = end - start;
+                var result = document.getElementById('result');
+                result.innerHTML = '耗时：' + diff + 'ms';
+                result.className = diff > 1000 ? 'fail' : 'pass';
+            });
+        });
+    });
+    </script>
+</body>
+</html>
