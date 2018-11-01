@@ -532,7 +532,7 @@ var esl;
      * @param {string} id 模块id
      */
     function modPrepare(id) {
-        var mod = modModules[id];
+        var mod = modModules[id];window.xx++
         if (!mod || modIs(id, MODULE_ANALYZED)) {
             return;
         }
@@ -629,12 +629,22 @@ var esl;
         );
     }
 
+    var isAutoDefining;
+    var autoDefineRepeat;
+
     /**
      * 对一些需要自动定义的模块进行自动定义
      *
      * @inner
      */
     function modAutoDefine() {
+        if (isAutoDefining) {
+            autoDefineRepeat = true;
+            return;
+        }
+
+        isAutoDefining = true;
+
         for (var id in modAutos) {
             var action = modAutos[id];
 
@@ -646,6 +656,13 @@ var esl;
             if (action >= MODULE_DEFINED) {
                 modTryInvokeFactory(id);
             }
+        }
+
+        isAutoDefining = false;
+
+        if (autoDefineRepeat) {
+            autoDefineRepeat = false;
+            modAutoDefine();
         }
     }
 
