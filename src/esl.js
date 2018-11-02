@@ -532,7 +532,7 @@ var esl;
      * @param {string} id 模块id
      */
     function modPrepare(id) {
-        var mod = modModules[id];window.xx++
+        var mod = modModules[id];
         if (!mod || modIs(id, MODULE_ANALYZED)) {
             return;
         }
