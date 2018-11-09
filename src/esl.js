@@ -186,7 +186,7 @@ var esl;
      *
      * @type {string}
      */
-    globalRequire.version = '2.2.2-beta.1';
+    globalRequire.version = '2.2.2-beta.2';
 
     /**
      * 将模块标识转换成相对的url
