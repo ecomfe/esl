@@ -970,7 +970,7 @@ var Communicator;
     * @param {string} url - url to use as a key to store file content
     * @param {string} contents file contents to be stored in cache
     * @private
-    * @returns a function adhearing to the lscache set() method
+    * @returns a function adhering to the lscache set() method
     **/
     function writeToCache(url, contents) {
       // lscache and passthrough
@@ -1583,7 +1583,7 @@ var Executor;
           if (!node.isCircular()) {
             // note: we use "name" here, because of CommonJS Spec 1.0 Modules
             // the relative includes we find must be relative to "name", not the
-            // resovled name
+            // resolved name
             returns.push(Executor.runModule(resolvedId, file, path, pointcuts));
           }
         });
@@ -1814,7 +1814,7 @@ var InjectCore;
        * @param {string} id - the module identifier for relative module IDs
        * @param {string} path - the module path for relative path operations
        * @public
-       * @returns a function adhearing to CommonJS and AMD require()
+       * @returns a function adhering to CommonJS and AMD require()
        */
       createRequire: function(id, path) {
         var req = new RequireContext(id, path);
@@ -1838,7 +1838,7 @@ var InjectCore;
        * @param {string} id - the module identifier for relative module IDs
        * @param {string} path - the module path for relative path operations
        * @public
-       * @returns a function adhearing to the AMD define() method
+       * @returns a function adhering to the AMD define() method
        */
       createDefine: function(id, path) {
         var req = new RequireContext(id, path);
@@ -2614,7 +2614,7 @@ var RulesEngine;
        * <li>ruleSet.pointcuts.after: a function to run after executing this module</li>
        * </ul>
        * @method RulesEngine.addRule
-       * @param {RegExp|String} regexMatch - a stirng or regex to match on
+       * @param {RegExp|String} regexMatch - a string or regex to match on
        * @param {int} weight - a weight for the rule. Larger values run later
        * @param {Object} ruleSet - an object containing the rules to apply
        * @public
