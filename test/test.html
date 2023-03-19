@@ -342,6 +342,10 @@ input { font-size: 12px; width: 210px;}
         <td><input value="undefModule" type="button" data-ignore="timestat"></td>
         <td class="uncheck"></td>
     </tr>
+    <tr>
+        <td><input value="multiEntryUseSameCombine" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
 
 </table>
 <table>
@@ -1933,6 +1937,87 @@ function undefModule(stateTd, callback) {
             callback();
         });
     })
+}
+</script>
+
+<script>
+define('multiEntryUseSameCombine/mod-1', 
+['require', 'multiEntryUseSameCombine/mod-ml', 'multiEntryUseSameCombine/mod-2'], 
+function (require) {
+    require('multiEntryUseSameCombine/mod-ml');
+    require('multiEntryUseSameCombine/mod-2');
+    return {
+        name: 'multiEntryUseSameCombine/mod-ml'
+    };
+});
+define('multiEntryUseSameCombine/mod-ml', ['require', 'multiEntryUseSameCombine/mod-out'], 
+function (require) {
+    require('multiEntryUseSameCombine/mod-out')
+    return {
+        name: 'multiEntryUseSameCombine/mod-ml'
+    };
+});
+define('multiEntryUseSameCombine/mod-2', ['require', 'multiEntryUseSameCombine/mod-ml'], 
+function (require) {
+    require('multiEntryUseSameCombine/mod-ml')
+    return {
+        name: 'multiEntryUseSameCombine/mod-2'
+    };
+});
+define(
+    'multiEntryUseSameCombine/entry1', 
+    ['require', 'multiEntryUseSameCombine/mod-1'], 
+    function (require) {
+        return {
+            dep: require('multiEntryUseSameCombine/mod-1'),
+            name: 'multiEntryUseSameCombine/entry1'
+        };
+    }
+);
+
+define(
+    'multiEntryUseSameCombine/entry2', 
+    ['require', 'multiEntryUseSameCombine/mod-2'], 
+    function (require, exports, module, mod2) {
+        require('multiEntryUseSameCombine/mod-2')
+        return {
+            name: 'multiEntryUseSameCombine/entry2'
+        };
+    }
+);
+
+function multiEntryUseSameCombine(stateTd, callback) {
+    var times = 0;
+    function done() {
+        if (times >= 2) {
+            stateTd.className = 'pass';
+            if (typeof callback == 'function') {
+                setTimeout(callback, 1);
+            }
+        }
+    }
+    
+
+    require(['multiEntryUseSameCombine/entry1'], function (entry) {
+        console.log(entry.name);
+        times++;
+        done();
+    });
+
+    require(['multiEntryUseSameCombine/entry2'], function (entry) {
+        console.log(entry.name);
+        times++;
+        done();
+    });
+
+    setTimeout(function () {
+        if (times < 2) {
+            stateTd.className = 'fail';
+            if (typeof callback == 'function') {
+                setTimeout(callback, 1);
+            }
+        }
+    }, 1500);
 }
 </script>
 </body>
