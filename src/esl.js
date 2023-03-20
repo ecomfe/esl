@@ -673,20 +673,24 @@ var esl;
      * @param {string} id 模块id
      */
     function modUpdatePreparedState(id) {
-        var updatingModules = {};
+        var moduleUpdatingState = {};
         update(id);
 
         function update(id) {
             modPrepare(id);
+
             if (!modIs(id, MODULE_ANALYZED)) {
                 return false;
             }
 
-            if (modIs(id, MODULE_PREPARED) || updatingModules[id]) {
-                return true;
+            switch (moduleUpdatingState[id]) {
+                case 1:
+                    return true;
+                case 2:
+                    return modIs(id, MODULE_PREPARED);
             }
 
-            updatingModules[id] = 1;
+            moduleUpdatingState[id] = 1;
             var mod = modModules[id];
             var prepared = true;
 
@@ -711,8 +715,9 @@ var esl;
 
             if (prepared) {
                 modSetState(id, MODULE_PREPARED);
-                updatingModules[id] = 0;
             }
+
+            moduleUpdatingState[id] = 2;
             return prepared;
         }
     }
