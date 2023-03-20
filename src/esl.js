@@ -22,6 +22,8 @@ var esl;
     // "mod"开头的变量或函数为内部模块管理函数
     // 为提高压缩率，不使用function或object包装
 
+    var undef;
+
     /**
      * 模块容器
      *
@@ -150,13 +152,10 @@ var esl;
         if (typeof requireId === 'string') {
             monitor(requireId);
         }
-        else {
-            each(
-                requireId,
-                function (id) {
-                    monitor(id);
-                }
-            );
+        else if (requireId instanceof Array) {
+            for (var i = 0, l = requireId.length; i < l; i++) {
+                monitor(requireId[i]);
+            }
         }
 
         // 包含相对id时，直接抛出错误
@@ -335,12 +334,12 @@ var esl;
                     hangModules.push(id);
                 }
 
-                each(
-                    mod.depMs,
-                    function (dep) {
+                if (mod.depMs) {
+                    for (var i = 0, l = mod.depMs.length; i < l; i++) {
+                        var dep = mod.depMs[i];
                         checkError(dep.absId, dep.hard);
                     }
-                );
+                }
             }
         }
 
@@ -379,19 +378,21 @@ var esl;
      * @param {string} ids 匿名define的模块的id
      */
     function modCompletePreDefine(ids) {
-        // HACK: 这里在IE下有个性能陷阱，不能使用任何变量。
-        //       否则貌似会形成变量引用和修改的读写锁，导致wait4PreDefine释放困难
-        each(wait4PreDefine, function (mod) {
-            each(ids, function (currentId) {
-                modPreDefine(
-                    currentId,
-                    mod.deps,
-                    mod.factory
-                );
-            });
-        });
+        var waitings = wait4PreDefine;
+        var waitingsLen = wait4PreDefine.length;
 
-        wait4PreDefine.length = 0;
+        if (waitingsLen) {
+            var waitings = wait4PreDefine;
+            var idsLen = ids ? ids.length : 0;
+            wait4PreDefine = [];
+
+            for (var i = 0; i < waitingsLen; i++) {
+                var mod = waitings[i];
+                for (var j = 0; j < idsLen; j++) {
+                    modPreDefine(ids[j], mod.deps, mod.factory);
+                }
+            }
+        }
     }
 
     /**
@@ -440,10 +441,10 @@ var esl;
         if (id) {
             modPreDefine(id, dependencies, factory);
         }
-        else if (ids) {
-            each(ids, function (id) {
-                modPreDefine(id, dependencies, factory);
-            });
+        else if (ids instanceof Array) {
+            for (var i = 0, l = ids.length; i < l; i++) {
+                modPreDefine(ids[i], dependencies, factory);
+            }
         }
         else {
             // 纪录到共享变量中，在load或readystatechange中处理
@@ -533,7 +534,7 @@ var esl;
      */
     function modPrepare(id) {
         var mod = modModules[id];
-        if (!mod || modIs(id, MODULE_ANALYZED)) {
+        if (!mod || modModules[id].state >= MODULE_ANALYZED) {
             return;
         }
 
@@ -559,11 +560,12 @@ var esl;
 
         var requireModules = [];
         var depResources = [];
-        each(deps, function (depId, index) {
+        for (var index = 0, l = deps.length; index < l; index++) {
+            var depId = deps[index];
             var idInfo = parseId(depId);
             var absId = normalize(idInfo.mod, id);
-            var moduleInfo;
-            var resInfo;
+            var moduleInfo = null;
+            var resInfo = null;
 
             if (absId && !BUILDIN_MODULE[absId]) {
                 // 如果依赖是一个资源，将其信息添加到module.depRs
@@ -611,7 +613,7 @@ var esl;
             if (index < hardDependsCount) {
                 mod.factoryDeps.push(resInfo || moduleInfo);
             }
-        });
+        }
 
         modSetState(id, MODULE_ANALYZED);
         modInitFactoryInvoker(id);
@@ -619,11 +621,14 @@ var esl;
         depResources.length && mod.require(
             depResources,
             function () {
-                each(mod.depRs, function (res) {
-                    if (!res.absId) {
-                        res.absId = normalize(res.id, id);
+                if (mod.depRs) {
+                    for (var i = 0, l = mod.depRs.length; i < l; i++) {
+                        var res = mod.depRs[i];
+                        if (!res.absId) {
+                            res.absId = normalize(res.id, id);
+                        }
                     }
-                });
+                }
                 modAutoDefine();
             }
         );
@@ -678,8 +683,9 @@ var esl;
 
         function update(id) {
             modPrepare(id);
+            var mod = modModules[id];
 
-            if (!modIs(id, MODULE_ANALYZED)) {
+            if (!mod || mod.state < MODULE_ANALYZED) {
                 return false;
             }
 
@@ -687,30 +693,27 @@ var esl;
                 case 1:
                     return true;
                 case 2:
-                    return modIs(id, MODULE_PREPARED);
+                    return mod.state >= MODULE_PREPARED;
             }
 
             moduleUpdatingStates[id] = 1;
-            var mod = modModules[id];
             var prepared = true;
 
-            each(
-                mod.depMs,
-                function (dep) {
-                    // return (prepared = update(dep.absId));
-                    prepared = update(dep.absId) && prepared;
-                }
-            );
+            var depMs = mod.depMs;
+            for (var i = 0, l = depMs ? depMs.length : 0; i < l; i++) {
+                prepared = update(depMs[i].absId) && prepared;
+            }
 
             // 判断resource是否加载完成。如果resource未加载完成，则认为未准备好
             /* jshint ignore:start */
-            prepared && each(
-                mod.depRs,
-                function (dep) {
-                    prepared = !!dep.absId;
-                    return prepared;
+            if (prepared) {
+                var depRs = mod.depRs;
+                for (var i = 0, l = depRs ? depRs.length : 0; i < l; i++) {
+                    if (!(prepared = !!depRs[i].absId)) {
+                        break;
+                    }
                 }
-            );
+            }
             /* jshint ignore:end */
 
             if (prepared) {
@@ -748,17 +751,15 @@ var esl;
 
             // 拼接factory invoke所需的arguments
             var factoryReady = 1;
-            each(
-                mod.factoryDeps,
-                function (dep) {
-                    var depId = dep.absId;
-
-                    if (!BUILDIN_MODULE[depId]) {
-                        modTryInvokeFactory(depId);
-                        return (factoryReady = modIs(depId, MODULE_DEFINED));
+            for (var i = 0, l = mod.factoryDeps.length; i < l; i++) {
+                var depId = mod.factoryDeps[i].absId;
+                if (!BUILDIN_MODULE[depId]) {
+                    modTryInvokeFactory(depId);
+                    if (!(factoryReady = modIs(depId, MODULE_DEFINED))) {
+                        break;
                     }
                 }
-            );
+            }
 
             if (factoryReady) {
                 try {
@@ -841,15 +842,14 @@ var esl;
      */
     function modGetModulesExports(modules, buildinModules) {
         var args = [];
-        each(
-            modules,
-            function (id, index) {
-                if (typeof id === 'object') {
-                    id = id.absId;
-                }
-                args[index] = buildinModules[id] || modModules[id].exports;
+        for (var i = 0, l = modules.length; i < l; i++) {
+            var id = modules[i];
+            if (typeof id === 'object') {
+                id = id.absId;
             }
-        );
+
+            args[i] = buildinModules[id] || modModules[id].exports;
+        }
 
         return args;
     }
@@ -897,21 +897,22 @@ var esl;
      * @param {number} state 模块状态
      */
     function modSetState(id, state) {
-        if (modIs(id, state)) {
+        var mod = modModules[id];
+        if (mod.state >= state) {
             return;
         }
 
-        var mod = modModules[id];
         mod.state = state;
 
         var listeners = modListeners[state][id];
-        // 清理listeners
-        modListeners[state][id] = null;
+        if (listeners instanceof Array) {
+            // 清理listeners
+            modListeners[state][id] = null;
 
-        each(listeners, function (listener) {
-            listener();
-        });
-
+            for (var i = 0, l = listeners.length; i < l; i++) {
+                listeners[i]();
+            }
+        }
 
 
         // call user hook
@@ -922,9 +923,11 @@ var esl;
 
         listeners = moduleChangeListeners[id];
         var stateListeners = listeners && listeners[state];
-        each(stateListeners, function (listener) {
-            listener(mod.id, mod.deps, mod.factory);
-        });
+        if (stateListeners instanceof Array) {
+            for (var i = 0, l = stateListeners.length; i < l; i++) {
+                stateListeners[i](mod.id, mod.deps, mod.factory);
+            }
+        }
     }
 
     /**
@@ -956,6 +959,14 @@ var esl;
         return MODULE_NOT_FOUND;
     }
 
+    function getContextLoadFn(id) {
+        return function (src) {
+            if (!(loadingModules[id] || modModules[id])) {
+                loadModule(id, src);
+            }
+        };
+    }
+
     /**
      * 异步加载模块
      * 内部使用，模块ID必须是经过normalize的Top-Level ID
@@ -968,27 +979,26 @@ var esl;
     function nativeAsyncRequire(ids, callback, baseId) {
         var isCallbackCalled = 0;
 
-        each(ids, function (id) {
+        for (var i = 0, l = ids.length; i < l; i++) {
+            var id = ids[i];
+
             if (!(BUILDIN_MODULE[id] || modIs(id, MODULE_DEFINED))) {
                 modAddListener(id, MODULE_DEFINED, tryFinishRequire);
 
-                var loaderValue;
-                var context = {
-                    id: id,
-                    load: function (src) {
-                        if (!(loadingModules[id] || modModules[id])) {
-                            loadModule(id, src);
-                        }
-                    },
-
-                    getModuleState: getModState
-                };
-
                 if (!(loadingModules[id] || modModules[id])) {
-                    each(loaders, function (loader) {
-                        loaderValue = loader(context, modAutoDefine);
-                        return typeof loaderValue === 'undefined';
-                    });
+                    var loaderValue = undef;
+                    var context = {
+                        id: id,
+                        load: getContextLoadFn(id),
+                        getModuleState: getModState
+                    };
+
+                    for (var li = 0, ll = loaders.length; li < ll; li++) {
+                        loaderValue = loaders[li](context, modAutoDefine);
+                        if (typeof loaderValue !== 'undefined') {
+                            break;
+                        }
+                    }
 
                     if (typeof loaderValue === 'string') {
                         loadModule(id, loaderValue);
@@ -1000,7 +1010,7 @@ var esl;
                     }
                 }
             }
-        });
+        }
 
         tryFinishRequire();
 
@@ -1013,11 +1023,16 @@ var esl;
         function tryFinishRequire() {
             if (typeof callback === 'function' && !isCallbackCalled) {
                 var isAllCompleted = 1;
-                each(ids, function (id) {
+                
+                for (var i = 0, l = ids.length; i < l; i++) {
+                    var id = ids[i];
                     if (!BUILDIN_MODULE[id]) {
-                        return (isAllCompleted = !!modIs(id, MODULE_DEFINED));
+                        isAllCompleted = !!modIs(id, MODULE_DEFINED);
+                        if (!isAllCompleted) {
+                            break;
+                        }
                     }
-                });
+                }
 
                 // 检测并调用callback
                 if (isAllCompleted) {
@@ -1060,11 +1075,12 @@ var esl;
         // 无论是纯正的shim模块还是hybird模块
         var shimDeps = shimConf && (shimConf.deps || []);
         if (shimDeps) {
-            each(shimDeps, function (dep) {
-                if (!requireConf.shim[dep]) {
-                    requireConf.shim[dep] = {};
+            for (var i = 0, l = shimDeps.length; i < l; i++) {
+                var shimDep = shimDeps[i];
+                if (!requireConf.shim[shimDep]) {
+                    requireConf.shim[shimDep] = {};
                 }
-            });
+            }
             actualGlobalRequire(shimDeps, load);
         }
         else {
@@ -1095,13 +1111,13 @@ var esl;
 
                     if (exports == null && shimConf.exports) {
                         exports = global;
-                        each(
-                            shimConf.exports.split('.'),
-                            function (prop) {
-                                exports = exports[prop];
-                                return !!exports;
+                        var exportsSegs = shimConf.exports.split('.');
+                        for (var i = 0, l = exportsSegs.length; i < l; i++) {
+                            exports = exports[exportsSegs[i]];
+                            if (!exports) {
+                                break;
                             }
-                        );
+                        }
                     }
 
                     globalDefine(moduleId, shimDeps, function () {
@@ -1242,7 +1258,7 @@ var esl;
      * @inner
      * @type {Array}
      */
-    var packagesIndex;
+    var packagesIndex = [];
 
     /**
      * mapping内部索引
@@ -1309,23 +1325,16 @@ var esl;
 
         // create mappingId index
         mappingIdIndex = createKVSortedIndex(requireConf.map, 1);
-        each(
-            mappingIdIndex,
-            function (item) {
-                item.v = createKVSortedIndex(item.v);
-            }
-        );
+        var mappingIdIndexLen = mappingIdIndex.length;
+        var lastMapItem = mappingIdIndex[mappingIdIndexLen - 1];
+        var lastMapItemMatchAll = lastMapItem && lastMapItem.k === '*';
 
-        var lastMapItem = mappingIdIndex[mappingIdIndex.length - 1];
-        if (lastMapItem && lastMapItem.k === '*') {
-            each(
-                mappingIdIndex,
-                function (item) {
-                    if (item !== lastMapItem) {
-                        item.v = item.v.concat(lastMapItem.v);
-                    }
-                }
-            );
+        while (mappingIdIndexLen--) {
+            var item = mappingIdIndex[mappingIdIndexLen];
+            item.v = createKVSortedIndex(item.v);
+            if (lastMapItemMatchAll && item !== lastMapItem) {
+                item.v = item.v.concat(lastMapItem.v);
+            }
         }
 
         // create packages index
@@ -1374,19 +1383,21 @@ var esl;
         bundlesIndex = {};
         bundlesRegExpIndex = [];
         for (var key in requireConf.bundles) {
-            each(requireConf.bundles[key], bundlesIterator);
-        }
+            var bundlesItems = requireConf.bundles[key];
 
-        /* eslint-disable no-use-before-define */
-        function bundlesIterator(id) {
-            if (id instanceof RegExp) {
-                bundlesRegExpIndex.push([id, key]);
-            }
-            else {
-                bundlesIndex[resolvePackageId(id)] = normalize(key);
+            if (bundlesItems instanceof Array) {
+                for (var i = 0, l = bundlesItems.length; i < l; i++) {
+                    var bundleId = bundlesItems[i];
+
+                    if (bundleId instanceof RegExp) {
+                        bundlesRegExpIndex.push([bundleId, key]);
+                    }
+                    else {
+                        bundlesIndex[resolvePackageId(bundleId)] = normalize(key);
+                    }
+                }
             }
         }
-        /* eslint-enable no-use-before-define */
     }
 
     /**
@@ -1399,12 +1410,15 @@ var esl;
     function bundleIdRetrieve(id) {
         var bundleId = bundlesIndex[id];
 
-        bundleId || each(bundlesRegExpIndex, function (index) {
-            if (index[0].test(id)) {
-                bundleId = index[1];
-                return false;
+        if (!bundleId && bundlesRegExpIndex) {
+            for (var i = 0, l = bundlesRegExpIndex.length; i < l; i++) {
+                var index = bundlesRegExpIndex[i];
+                if (index[0].test(id)) {
+                    bundleId = index[1];
+                    break;
+                }
             }
-        });
+        }
 
         return bundleId;
     }
@@ -1418,12 +1432,15 @@ var esl;
      * @param {Function} hitBehavior 索引命中的行为函数
      */
     function indexRetrieve(value, index, hitBehavior) {
-        each(index, function (item) {
-            if (item.reg.test(value)) {
-                hitBehavior(item.v, item.k, item);
-                return false;
+        if (index) {
+            for (var i = 0, l = index.length; i < l; i++) {
+                var item = index[i];
+                if (item.reg.test(value)) {
+                    hitBehavior(item.v, item.k, item);
+                    break;
+                }
             }
-        });
+        }
     }
 
     /**
@@ -1503,9 +1520,9 @@ var esl;
             var pureModules = [];
             var normalizedIds = [];
 
-            each(
-                ids,
-                function (id, i) {
+            if (ids instanceof Array) {
+                for (var i = 0, l = ids.length; i < l; i++) {
+                    var id = ids[i];
                     var idInfo = parseId(id);
                     var absId = normalize(idInfo.mod, baseId);
                     var resId = idInfo.res;
@@ -1525,7 +1542,7 @@ var esl;
                     modFlagAuto(absId, flagState);
                     pureModules.push(absId);
                 }
-            );
+            }
 
             return {
                 mods: pureModules,
@@ -1560,12 +1577,13 @@ var esl;
                     parseResult.mods,
                     function () {
                         /* jshint ignore:start */
-                        each(parseResult.ids, function (id, i) {
+                        for (var i = 0, l = parseResult.ids.length; i < l; i++) {
+                            var id = parseResult.ids[i];
                             if (id == null) {
                                 id = parseResult.ids[i] = normalize(requireId[i], baseId);
                                 modFlagAuto(id, MODULE_DEFINED);
                             }
-                        });
+                        }
                         /* jshint ignore:end */
 
                         // modAutoDefine中，factory invoke可能发生错误
@@ -1609,9 +1627,9 @@ var esl;
             }
 
             var parseResult = parseIds(ids, MODULE_PREPARED);
-            each(parseResult.mods, function (id) {
-                modAddListener(id, MODULE_PREPARED, fetchFinish);
-            });
+            for (var i = 0, l = parseResult.mods.length; i < l; i++) {
+                modAddListener(parseResult.mods[i], MODULE_PREPARED, fetchFinish);
+            }
 
             // 加载模块
             nativeAsyncRequire(parseResult.mods);
@@ -1687,16 +1705,14 @@ var esl;
      * @return {string} 解析后的id
      */
     function resolvePackageId(id) {
-        each(
-            packagesIndex,
-            function (packageConf) {
-                var name = packageConf.name;
-                if (name === id) {
-                    id = name + '/' + packageConf.main;
-                    return false;
-                }
+        for (var i = 0, l = packagesIndex.length; i < l; i++) {
+            var packageConf = packagesIndex[i];
+            var name = packageConf.name;
+
+            if (name === id) {
+                return name + '/' + packageConf.main;
             }
-        );
+        }
 
         return id;
     }
@@ -1765,23 +1781,6 @@ var esl;
      */
     function createPrefixRegexp(prefix) {
         return new RegExp('^' + prefix + '(/|$)');
-    }
-
-    /**
-     * 循环遍历数组集合
-     *
-     * @inner
-     * @param {Array} source 数组源
-     * @param {function(Array,Number):boolean} iterator 遍历函数
-     */
-    function each(source, iterator) {
-        if (source instanceof Array) {
-            for (var i = 0, len = source.length; i < len; i++) {
-                if (iterator(source[i], i) === false) {
-                    break;
-                }
-            }
-        }
     }
 
     /**
