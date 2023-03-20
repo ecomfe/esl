@@ -2,11 +2,17 @@
     "name": "esljs",
     "description": "ESL是一个浏览器端、符合AMD的标准加载器，适合用于现代Web浏览器端应用的入口与模块管理。",
     "version": "2.2.2-beta.2",
+    "scripts": {
+        "build": "tool/dist.sh"
+    },
     "main": "dist/esl.js",
     "browser": "src/esl.js",
     "files": [
         "src",
         "dist"
     ],
-    "repository": "git://github.com/ecomfe/esl"
+    "repository": "git://github.com/ecomfe/esl",
+    "devDependencies": {
+        "uglify-js": "^2.8.22"
+    }
 }

@@ -14,11 +14,11 @@ mkdir dist-check/src
 cp src/esl.js dist-check/src/esl.source.js
 # node tool/rm-ignore.js -i dist-check/src/esl.source.js -o dist-check/src/esl.source.min.js
 cd dist-check/src
-uglifyjs esl.source.js -m -c --source-map=esl.map --source-map-include-sources --source-map-url=esl.map -o esl.js
+npx uglifyjs esl.source.js -m -c --source-map=esl.map --source-map-include-sources --source-map-url=esl.map -o esl.js
 cd ../../
 # uglifyjs dist-check/src/esl.source.min.js -m -c -o dist-check/src/esl.min.js
-uglifyjs src/js.js -m -c -o dist-check/src/js.js
-uglifyjs src/css.js -m -c -o dist-check/src/css.js
+npx uglifyjs src/js.js -m -c -o dist-check/src/js.js
+npx uglifyjs src/css.js -m -c -o dist-check/src/css.js
 
 gzip -kf dist-check/src/esl.js
 # gzip -kf dist-check/src/esl.min.js
