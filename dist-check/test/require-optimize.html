@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script src="impl/esl/esl.js"></script>
+<script>
+require.config( {
+    baseUrl: '.',
+    paths: {
+        'css': '../src/css',
+        'js': '../src/js',
+        'abspath': '/test/pathstest',
+        'relapath': 'pathstest/rela'
+    },
+    map: {
+        'usecjs': {
+            simple: 'cjs/simple'
+        },
+        'usecjs/change2amd': {
+            simple: 'amd/simple'
+        }
+    },
+    packages: [
+        'pkgclassic/1.0',
+        {
+            name: 'pkgsetmain',
+            location: 'pkgsetmain/2.0',
+            main: 'index'
+        }
+    ]
+} );
+</script>
+<script>
+require([ 'requirethousand/index' ], function ( index ) {
+    index();
+});
+</script>
+</head>
+<body>
+</body>
+

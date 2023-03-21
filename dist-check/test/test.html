@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8" />
+<title>loader test</title>
+
+<script src="impl/esl/esl.js"></script>
+<!--script src="impl/requirejs/require.js"></script-->
+<!--script src="impl/needs/needs.js"></script-->
+<!--script src="impl/lsjs/lsjs.js"></script-->
+<script>
+require.config({
+    waitSeconds: 5,
+    urlArgs: 'urlArgs',
+    baseUrl: '.',
+    paths: {
+        'css': '../src/css',
+        'js': '../src/js',
+        'abspath': location.pathname.replace(/\/[^\/]+$/, '/') + 'pathstest',
+        'relapath': 'pathstest/rela'
+    },
+    map: {
+        'usecjs': {
+            simple: 'cjs/simple'
+        },
+        'usecjs/change2amd': {
+            simple: 'amd/simple'
+        },
+        '*': {
+            'map/lib': 'map/betterlib'
+        },
+        'map/biz': {
+            'map/lib': 'map/lib'
+        },
+        'map/biz2': {
+            'map/view': 'map/formview'
+        }
+    },
+    packages: [
+        'pkgclassic/1.0',
+        {
+            name: 'pkgsetmain',
+            location: 'pkgsetmain/2.0',
+            main: 'index'
+        }
+    ],
+    config: {
+        'moduleconf/index': {
+            'desc': 'index'
+        },
+        'moduleconf/cat': {
+            'desc': 'cat'
+        }
+    }
+});
+
+require.config({
+    urlArgs: {
+        css: 'css',
+        amd: 'amd',
+        'amd/simpleDependency': 'amdsd'
+    }
+});
+
+function hasModuleRequest(moduleId) {
+    var scripts = document.getElementsByTagName('script');
+    var len = scripts.length;
+
+    while (len--) {
+        if (scripts[len].getAttribute('data-src') == require.toUrl(moduleId + '.js')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function findScriptByModuleId(moduleId) {
+    var scripts = document.getElementsByTagName('script');
+    var len = scripts.length;
+
+    while (len--) {
+        if (scripts[len].getAttribute('data-src') == require.toUrl(moduleId + '.js')) {
+            return scripts[len];
+        }
+    }
+
+    return null;
+}
+</script>
+
+<style>
+.uncheck,
+.checking,
+.pass,
+.fail {
+    width: 60px;
+}
+
+.uncheck { background: #eee; }
+.checking { background: yellow; }
+.pass { background: green; }
+.fail { background: red; }
+
+.cssplugin,
+.cssplugin-local{ visibility: hidden; }
+
+table { width: 250px; float:left; margin-right: 10px;}
+input { font-size: 12px; width: 210px;}
+</style>
+</head>
+
+<body>
+<table>
+    <tr>
+        <th colspan="2" align="left">AMD:</th>
+    </tr>
+    <tr>
+        <td><input value="amd/simple" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/noDefineId" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/objectFactory" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/simpleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/relativeDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/manyDependencies" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/innerDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/innerRelativeDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/deepDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/deepDependency2" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/deepDependency3" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+
+    <tr>
+        <td><input value="amd/simpleCircleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/simpleCircleDependency2" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/simpleCircleDependency3" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/circleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/complexCircleDependency" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/complexCircleDependency2" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/complexCircleDependency3" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/hardCircleDependency" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/combine" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/btModuleId" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="lazyDefine" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="meaninglessDefine" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="triangleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="factoryReinvoke" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+</table>
+<table>
+    <tr>
+        <th colspan="2" align="left">CJS:</th>
+    </tr>
+    <tr>
+        <td><input value="cjs/simple" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/noDefineId" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/simpleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/relativeDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/manyDependencies" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/deepDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/circleDependency" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="cjs/combine" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Plugin:</th>
+    </tr>
+    <tr>
+        <td><input value="loadResource" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/combineplugin" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/combineplugin2" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="amd/combineplugin3" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="multiResources" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="deepResources" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">CSS Plugin:</th>
+    </tr>
+    <tr>
+        <td><input value="globalLoadCss" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="localLoadCss" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Particular Cases:</th>
+    </tr>
+    <tr>
+        <td><input value="defineInScript" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="defineInScriptLoadSoon" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="defineManyInScript" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="nonstandardId" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mapAndPackage" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexProcess" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexProcessWithResource1" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexProcessWithResource2" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="checkOnNodeCreated" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="justFetch" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="justFetchUseListen" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="undefModule" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="multiEntryUseSameCombine" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+
+</table>
+<table>
+    <tr>
+        <th colspan="2" align="left">Conf paths:</th>
+    </tr>
+    <tr>
+        <td><input value="relapath" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="abspath" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Conf map:</th>
+    </tr>
+    <tr>
+        <td><input value="mapVersion" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="longMapFirst" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="nomapGlobal" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mapMixDefaultAndNamed" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Conf config:</th>
+    </tr>
+    <tr>
+        <td><input value="moduleconf" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Conf packages:</th>
+    </tr>
+    <tr>
+        <td><input value="stringPackage" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="objectPackage" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mergePackage" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Conf shim:</th>
+    </tr>
+    <tr>
+        <td><input value="pureShim" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mixedSimpleShim" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mixedSimpleShim_hasDeps" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mixedSimpleShim_hybirdDep" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mixedSimpleShim_indirectHybirdDep" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="mixedComplexShim" type="button"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Conf urlArgs:</th>
+    </tr>
+    <tr>
+        <td><input value="urlArgs" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Conf bundles:</th>
+    </tr>
+    <tr>
+        <td><input value="simpleBundles" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="complexBundles" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="regexpBundles" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="packageBundles" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="issue70" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <th colspan="2" align="left">Custom Loader:</th>
+    </tr>
+    <tr>
+        <td><input value="custom-loader" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="userDefineCustomLoader" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="userDefineCustomLoaderIdUniq" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="ud-loader-wait" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="ud-loader-wait2" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="userDefineCustomLoaderMix" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+    <tr>
+        <td><input value="userDefineCustomLoaderCheckState" type="button" data-ignore="timestat"></td>
+        <td class="uncheck"></td>
+    </tr>
+
+</table>
+
+<script>
+require.config({
+    packages: [
+        {
+            name: 'merge-package',
+            location: 'merge-pkg/old'
+        }
+    ]
+});
+
+require.config({
+    packages: [
+        {
+            name: 'merge-package',
+            location: 'merge-pkg/new',
+            main: 'index'
+        }
+    ]
+});
+
+function mergePackage(stateTd, callback) {
+    require(['merge-package'], function (pkg) {
+        if (pkg.name === 'merge-package:new') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if (typeof callback == 'function') {
+            setTimeout(callback, 1);
+        }
+    });
+}
+</script>
+
+<script>
+// shim test
+require.config({
+    paths: {
+        shimPureIndex: 'shim/pure/index',
+        shimPureA: 'shim/pure/a',
+        shimPureB: 'shim/pure/b',
+        shimPureC: 'shim/pure/c',
+        shimPureD: 'shim/pure/d',
+        shimPureE: 'shim/pure/e',
+        shimPureF: 'shim/pure/f',
+        shimMixedSA: 'shim/mixed/sa',
+        shimMixedSB: 'shim/mixed/sb',
+        shimMixedSC: 'shim/mixed/sc',
+        shimMixedSD: 'shim/mixed/sd',
+        shimMixedSE: 'shim/mixed/se',
+        shimMixedSF: 'shim/mixed/sf',
+        shimMixedSG: 'shim/mixed/sg',
+        shimMixedLib: 'shim/mixed/shimLib',
+        shimMixedHybird: 'shim/mixed/shimHybird',
+        shimMixedHybird2: 'shim/mixed/shimHybird2',
+        shimMixedUI: 'shim/mixed/shimUI'
+    },
+    shim: {
+        shimPureIndex: {
+            deps: ['shimPureA', 'shimPureB'],
+            exports: 'shimPureIndex.exports'
+        },
+        shimPureA: {
+            exports: 'shimPureA',
+            deps: ['shimPureC', 'shimPureD', 'shimPureE'],
+            init: function (c, d, e) {
+                return {
+                    name: shimPureA.name,
+                    c: shimPureC,
+                    cname: shimPureC.name,
+                    d: shimPureD,
+                    dname: shimPureD.name,
+                    e: e,
+                    ename: e.name
+                };
+            }
+        },
+        shimPureB: {exports: 'shimPureBOther'},
+        shimPureC: ['shimPureD', 'shimPureE'],
+        shimPureE: {
+            deps: ['shimPureD', 'shimPureB'],
+            init: function (d, b) {
+                return {
+                    name: shimPureEOther.name,
+                    raw: shimPureEOther,
+                    d: shimPureD,
+                    dname: shimPureD.name,
+                    b: b,
+                    bname: b.name
+                };
+            }
+        },
+        shimPureF: {
+            init: function () {
+                return {
+                    name: shimPureFName
+                };
+            }
+        },
+        shimMixedSB: {exports: 'shimMixedSBOther'},
+        shimMixedSA: {
+            deps: ['shimMixedSE', 'shimMixedSF'],
+            init: function (e, f) {
+                return {
+                    raw: shimMixedSA,
+                    e: e,
+                    f: f
+                };
+            }
+        },
+        shimMixedSD: {exports: 'shimMixedSDOther'},
+        shimMixedSE: {
+            deps: ['shimMixedSC', 'shimMixedSD'],
+            exports: 'shimMixedSE'
+        },
+        shimMixedSF: {
+            deps: ['shimMixedSC'],
+            exports: 'shimMixedSFOther'
+        },
+        shimMixedSG: {
+            exports: 'shimMixedSGOther'
+        },
+        shimMixedUI: {
+            exports: 'shimMixedUI',
+            deps: ['shimMixedLib']
+        }
+    }
+});
+
+function pureShim(stateTd, callback) {
+    require(['shimPureIndex', 'shimPureA', 'shimPureF'], function (index, a, f) {
+        if (
+            index === shimPureIndex.exports
+            && index.bname === 'shim pure b'
+            && index.b === shimPureBOther
+            && a.name === 'shim pure a'
+            && a.cname === 'shim pure c'
+            && a.dname === 'shim pure d'
+            && a.ename === 'shim pure e'
+            && a.c === shimPureC
+            && a.d === shimPureD
+            && a.e.raw === shimPureEOther
+            && a.e.name === 'shim pure e'
+            && a.e.dname === 'shim pure d'
+            && a.e.bname === 'shim pure b'
+            && a.e.d === shimPureD
+            && a.e.b === shimPureBOther
+            && f.name === 'shim pure f'
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mixedSimpleShim(stateTd, callback) {
+    require(['shim/mixed/simpleIndex'], function (index) {
+        if (
+            index.name === 'shim mixed simpleIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mixedSimpleShim_hasDeps(stateTd, callback) {
+    require(['shim/mixed/simpleHasDepsIndex'], function (index) {
+        if (
+            index.name === 'shim mixed simpleHasDepsIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mixedSimpleShim_hybirdDep(stateTd, callback) {
+    require(['shim/mixed/simpleHybirdDepIndex'], function (index) {
+        if (
+            index.name === 'shim mixed simpleHybirdDepIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mixedSimpleShim_indirectHybirdDep(stateTd, callback) {
+    require(['shim/mixed/simpleIndirectHybirdDepIndex'], function (index) {
+        if (
+            index.name === 'shim mixed simpleIndirectHybirdDepIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function mixedComplexShim(stateTd, callback) {
+    require(['shim/mixed/complexIndex'], function (index) {
+        if (
+            index.name === 'shim mixed complexIndex'
+            && index.check()
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+</script>
+
+<script src="complexProcess/pure/combine.js"></script>
+<script src="complexProcess/mixed/combine.js"></script>
+<script>
+// complex process
+function complexProcess(stateTd, callback) {
+    require(['complexProcess/pure/text'], function (text) {
+        require(['complexProcess/pure/index', 'complexProcess/pure/empty'], function (index, empty) {
+            if (
+                index.name === 'complexProcess/pure/index'
+                && index.text.name === 'complexProcess/pure/text'
+                && index.bar.name === 'complexProcess/pure/bar'
+                && index.text === index.bar.text
+                && empty.name === 'complexProcess/pure/empty'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if (callback) {
+                callback();
+            }
+        });
+    });
+}
+
+function complexProcessWithResource1(stateTd, callback) {
+    require(['complexProcess/simpleMixed/text!x'], function (xRes) {
+        require(['complexProcess/simpleMixed/index', 'complexProcess/simpleMixed/empty'], function (index, empty) {
+            if (
+                index.name === 'complexProcess/simpleMixed/index'
+                && index.res === 'complexProcess/simpleMixed/text!x'
+                && empty.name === 'complexProcess/simpleMixed/empty'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if (callback) {
+                callback();
+            }
+        });
+    });
+}
+
+function complexProcessWithResource2(stateTd, callback) {
+    require(['complexProcess/mixed/text!x'], function (xRes) {
+        require(['complexProcess/mixed/index', 'complexProcess/mixed/empty'], function (index, empty) {
+            if (
+                index.name === 'complexProcess/mixed/index'
+                && index.res === 'complexProcess/mixed/text!x'
+                && index.bar.name === 'complexProcess/mixed/bar'
+                && index.res === index.bar.res
+                && empty.name === 'complexProcess/mixed/empty'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if (callback) {
+                callback();
+            }
+        });
+    });
+}
+</script>
+
+<script>
+require.config({
+    baseUrl: '.',
+    packages: [
+        {
+            name: 'map-and-pkg-lang-0.1',
+            location: 'map-and-pkg/lang/0.1'
+        },
+        {
+            name: 'map-and-pkg-lang-0.2',
+            location: 'map-and-pkg/lang/0.2'
+        },
+        {
+            name: 'map-and-pkg-lib',
+            location: 'map-and-pkg/lib-pkg'
+        }
+    ],
+    map: {
+        'map-and-pkg/foo': {
+            'map-and-pkg/lang': 'map-and-pkg-lang-0.1'
+        },
+        'map-and-pkg/bar': {
+            'map-and-pkg/lang': 'map-and-pkg-lang-0.2'
+        },
+        'map-and-pkg/index': {
+            'map-and-pkg-lib': 'map-and-pkg/lib'
+        },
+        'map-and-pkg/index2': {
+            'map-and-pkg/lib': 'map-and-pkg-lib'
+        },
+        'map-and-pkg/index3': {
+            'map-and-pkg-lib/main': 'map-and-pkg/lib'
+        }
+    }
+});
+
+
+function mapAndPackage(stateTd, callback) {
+    require(
+        [
+            'map-and-pkg/foo', // normal module -> package main
+            'map-and-pkg/bar', // normal module -> package main
+            'map-and-pkg/index',  // package main -> normal module
+            'map-and-pkg/index2', // normal module -> package main
+            'map-and-pkg/index3'  // package dont trigger main map
+        ],
+        function (foo, bar, index, index2, index3) {
+            if (foo.lang.name === 'lang-0.1'
+                && bar.lang.name === 'lang-0.2'
+                && index.lib.name === 'map-and-pkg/lib'
+                && index2.lib.name === 'map-and-pkg-lib/main'
+                && index3.lib.name === 'map-and-pkg-lib/main'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+</script>
+
+<script>
+// bundles test
+require.config({
+    bundles: {
+        'bundles/simple/index': [
+            'bundles/simple/cat',
+            'bundles/simple/plugin!resource'
+        ],
+        'bundles/complex/index1': [
+            'bundles/complex/view1',
+            'bundles/complex/model1',
+            'bundles/complex/tpl',
+            'bundles/complex/tpl!bundles/complex/tpl1',
+            'bundles/complex/lib'
+        ],
+        'bundles/package/index': [
+            'bundlesPackage'
+        ],
+        'zrender': [
+          'zrender/graphic/helper/smoothSpline'
+        ],
+        'bundles/reg/index1': [/^bundles\/reg\//]
+    },
+    packages:[
+        {
+            name: 'bundlesPackage',
+            location: 'bundles/package'
+        },
+        {
+            name: 'zrender',
+            location: 'bundles/issue70',
+            main: 'zrender'
+        }
+    ]
+});
+
+function issue70(stateTd, callback) {
+    require(['zrender/graphic/helper/smoothSpline'], function (cat) {
+        if (hasModuleRequest('zrender/zrender')
+            && cat.name === 'zrender/graphic/helper/smoothSpline') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+function simpleBundles(stateTd, callback) {
+    require(['bundles/simple/cat', 'bundles/simple/plugin!resource'],
+        function (cat, res) {
+            if (
+                !hasModuleRequest('bundles/simple/cat')
+                && !hasModuleRequest('bundles/simple/plugin')
+                && hasModuleRequest('bundles/simple/index')
+                && cat.name == 'bundles/simple/cat'
+                && res == 'bundles/simple/plugin!resource'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function complexBundles(stateTd, callback) {
+    require(['bundles/complex/view1', 'bundles/complex/index1'],
+        function (view1, index1) {
+            if (
+                !hasModuleRequest('bundles/complex/view1')
+                && !hasModuleRequest('bundles/complex/model1')
+                && !hasModuleRequest('bundles/complex/tpl')
+                && !hasModuleRequest('bundles/complex/lib')
+                && hasModuleRequest('bundles/complex/index1')
+                && view1.check()
+                && index1.check()
+                && index1.name == 'bundles/complex/index1'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function regexpBundles(stateTd, callback) {
+    require(['bundles/reg/view1', 'bundles/reg/index1'],
+        function (view1, index1) {
+            if (
+                !hasModuleRequest('bundles/reg/view1')
+                && !hasModuleRequest('bundles/reg/model1')
+                && !hasModuleRequest('bundles/reg/tpl')
+                && !hasModuleRequest('bundles/reg/lib')
+                && hasModuleRequest('bundles/reg/index1')
+                && view1.check()
+                && index1.check()
+                && index1.name == 'bundles/reg/index1'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function packageBundles(stateTd, callback) {
+    require(['bundles/package/index', 'bundlesPackage'],
+        function (index, pkgMain) {
+            if (
+                !hasModuleRequest('bundlesPackage')
+                && !hasModuleRequest('bundlesPackage/main')
+                && hasModuleRequest('bundles/package/index')
+                && index.name == 'bundles/package/index'
+                && pkgMain.name == 'bundlesPackage/main'
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+</script>
+
+<script>
+
+function defineInScript( stateTd, callback ) {
+    define('define-in-script', { name: 'define-in-script' });
+    require([ 'define-in-script' ], function (mod) {
+        if (mod.name === 'define-in-script') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        callback();
+    });
+}
+
+function defineInScriptLoadSoon(stateTd, callback) {
+    define('define-in-script-load-soon/index', ['require', './cat'],
+        function (require) {
+            var cat = require('./cat');
+            return {
+                name: 'define-in-script-load-soon/index',
+                check: function () {
+                    return cat.name === 'define-in-script-load-soon/cat'
+                }
+            };
+        }
+    );
+
+    setTimeout(function () {
+
+        if (hasModuleRequest('define-in-script-load-soon/cat')) {
+            stateTd.className = 'fail';
+            callback();
+            return;
+        }
+
+        require(['define-in-script-load-soon/index'], function (index) {
+            if (hasModuleRequest('define-in-script-load-soon/cat')
+                && index.name === 'define-in-script-load-soon/index'
+                && index.check()
+            ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            callback();
+        })
+
+    }, 1);
+}
+
+function defineManyInScript( stateTd, callback ) {
+    define('define-in-script/cat',
+        ['require', './index'],
+        function ( r ) {
+            return {
+                name: 'define-in-script/cat',
+                check: function () {
+                    return r( './index' ).name == 'define-in-script/index';
+                }
+            };
+        }
+    );
+
+    define(
+        'define-in-script/dog',
+        [],
+        function () {
+            return {
+                name: 'define-in-script/dog'
+            };
+        }
+    );
+
+    define(
+        'define-in-script/lion',
+        [],
+        function () {
+            return {
+                name: 'define-in-script/lion'
+            };
+        }
+    );
+
+    define(
+        'define-in-script/tiger',
+        [],
+        function () {
+            return {
+                name: 'define-in-script/tiger'
+            };
+        }
+    );
+
+    define(
+        'define-in-script/index',
+        [
+            'require',
+            './cat',
+            './dog',
+            'define-in-script/tiger',
+            './lion'
+        ],
+        function ( r, cat, dog, tiger ) {
+            var lion = r( './lion' );
+
+            return {
+                name: 'define-in-script/index',
+                check: function () {
+                    var valid =
+                        cat.name == 'define-in-script/cat' && cat.check()
+                        && dog.name == 'define-in-script/dog'
+                        && tiger.name == 'define-in-script/tiger'
+                        && lion.name == 'define-in-script/lion';
+                    return valid;
+                }
+            };
+        }
+    );
+
+    require([ 'define-in-script/index' ], function (index) {
+        if (index.check()) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        callback();
+    });
+}
+
+function nonstandardId( stateTd, callback ) {
+    define('nonstandard: define$in-script/cat.js',
+        ['require', './index.js'],
+        function ( r ) {
+            return {
+                name: 'nonstandard: define$in-script/cat.js',
+                check: function () {
+                    return r( './index.js' ).name == 'nonstandard: define$in-script/index.js';
+                }
+            };
+        }
+    );
+
+    define(
+        'nonstandard: define$in-script/dog.js',
+        [],
+        function () {
+            return {
+                name: 'nonstandard: define$in-script/dog.js'
+            };
+        }
+    );
+
+    define(
+        'nonstandard: define$in-script/lion.js',
+        [],
+        function () {
+            return {
+                name: 'nonstandard: define$in-script/lion.js'
+            };
+        }
+    );
+
+    define(
+        'nonstandard: define$in-script/tiger.js',
+        [],
+        function () {
+            return {
+                name: 'nonstandard: define$in-script/tiger.js'
+            };
+        }
+    );
+
+    define(
+        'nonstandard: define$in-script/index.js',
+        [
+            'require',
+            './cat.js',
+            './dog.js',
+            'nonstandard: define$in-script/tiger.js',
+            './lion.js'
+        ],
+        function ( r, cat, dog, tiger ) {
+            var lion = r( './lion.js' );
+
+            return {
+                name: 'nonstandard: define$in-script/index.js',
+                check: function () {
+                    var valid =
+                        cat.name == 'nonstandard: define$in-script/cat.js' && cat.check()
+                        && dog.name == 'nonstandard: define$in-script/dog.js'
+                        && tiger.name == 'nonstandard: define$in-script/tiger.js'
+                        && lion.name == 'nonstandard: define$in-script/lion.js';
+                    return valid;
+                }
+            };
+        }
+    );
+
+    require([ 'nonstandard: define$in-script/index.js' ], function (index) {
+        if (index.check()) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        callback();
+    });
+}
+
+function checkNormalModule( name, stateTd, module, callback ) {
+    if (
+        module
+        && module.name == name
+        && ( typeof module.check != 'function'
+             || module.check() )
+    ) {
+        stateTd.className = 'pass';
+    }
+    else {
+        stateTd.className = 'fail';
+    }
+
+    if ( typeof callback == 'function' ) {
+        setTimeout( callback, 1 );
+    }
+}
+
+function meaninglessDefine( stateTd, callback ) {
+    define({});
+    require([ 'meaninglessDefine/index' ], function ( index ) {
+        stateTd.className = index.name == 'meaninglessDefine/index' ? 'pass' : 'fail';
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    })
+}
+
+function triangleDependency(stateTd, callback) {
+    require([ 'amd/triangleDependency/index', 'amd/triangleDependency/sub' ], function ( index, sub ) {
+        stateTd.className = index.name == 'amd/triangleDependency/index' && index.check()
+            ? 'pass'
+            : 'fail';
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    })
+}
+
+function lazyDefine( stateTd, callback ) {
+    require( [ 'amd/lazyDefine/index' ], function ( index ) {
+        if ( window.__eslIsLazyDefine && index.name == 'amd/lazyDefine/index' ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    } );
+}
+
+function loadResource( stateTd, callback ) {
+    require( [ 'plugin/html!plugin/resource' ], function ( text ) {
+        if ( text == 'plugin/html!plugin/resource' ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    } );
+}
+
+function nomapGlobal( stateTd, callback ) {
+    require( [ 'simple/index' ], function ( module ) {
+        checkNormalModule( 'simple/index', stateTd, module, callback );
+    } );
+}
+
+function mapMixDefaultAndNamed( stateTd, callback ) {
+    require(
+        ['map/index', 'map/biz', 'map/biz2', 'map/biz/model', 'map/biz2/model'],
+        function (index, biz, biz2, model, model2) {
+            var valid = index.check()
+                && biz.check()
+                && biz2.check()
+                && model.check()
+                && model2.check();
+
+            if (valid) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if ( typeof callback == 'function' ) {
+                setTimeout( callback, 1 );
+            }
+        }
+    );
+}
+
+function longMapFirst( stateTd, callback ) {
+    require( [ 'usecjs/change2amd' ], function ( module ) {
+        checkNormalModule( 'usecjs/change2amd', stateTd, module, callback );
+    } );
+}
+
+function mapVersion( stateTd, callback ) {
+    require( [ 'usecjs/index' ], function ( module ) {
+        checkNormalModule( 'usecjs/index', stateTd, module, callback );
+    } );
+}
+
+function objectPackage( stateTd, callback ) {
+    require( [ 'pkgsetmain' ], function ( module ) {
+        checkNormalModule( 'pkgsetmain', stateTd, module, callback );
+    } );
+}
+
+function stringPackage( stateTd, callback ) {
+    require( [ 'pkgclassic' ], function ( module ) {
+        checkNormalModule( 'pkgclassic', stateTd, module, callback );
+    } );
+}
+
+function globalLoadCss( stateTd, callback ) {
+    stateTd.className = 'pass cssplugin';
+
+    require( [ 'css!cssplugin/style.css' ], function () {
+        callback();
+    } );
+}
+
+function localLoadCss( stateTd, callback ) {
+    stateTd.className = 'pass cssplugin-local';
+
+    require( [ 'cssplugin/index' ], function ( mod ) {
+        if ( mod.name != 'cssplugin/index' ) {
+            stateTd.className = 'fail';
+        }
+
+        callback();
+    } );
+}
+
+function multiResources( stateTd, callback ) {
+    stateTd.className = 'checking';
+    require(['multiResources/p'], function () {
+        require(['multiResources/index'], function ( index ) {
+            if ( index.check() ) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+            callback();
+        });
+    });
+}
+
+function urlArgs( stateTd, callback ) {
+    stateTd.className = 'pass';
+
+    var scripts = document.getElementsByTagName( 'script' );
+    var len = scripts.length;
+    while ( len-- ) {
+        var script = scripts[ len ];
+        var moduleId = script.getAttribute( 'data-require-id' );
+        var src = script.getAttribute( 'src' );
+
+        if ( !moduleId ) {
+            continue;
+        }
+
+        if ( moduleId == 'css' ) {
+            if ( !/(&|\?)css$/.test( src ) ) {
+                stateTd.className = 'fail';
+                break;
+            }
+        }
+        else if ( /^amd\/simpleDependency(\/|$)/.test(moduleId) ) {
+            if ( !/(&|\?)amdsd$/.test( src ) ) {
+                stateTd.className = 'fail';
+                break;
+            }
+        }
+        else if ( /^amd(\/|$)/.test(moduleId) ) {
+            if ( !/(&|\?)amd$/.test( src ) ) {
+                stateTd.className = 'fail';
+                break;
+            }
+        }
+        else {
+            if ( !/(&|\?)urlArgs$/.test( src ) ) {
+                stateTd.className = 'fail';
+                break;
+            }
+        }
+    }
+    callback();
+}
+
+(function () {
+
+    if ( !window.console ) {
+        var text = document.createElement( 'textarea' );
+        text.style.width = "800px";
+        text.style.height = "400px";
+        if ( !/[\?|]console/.test( location.search ) ) {
+            text.style.display = 'none';
+        }
+        document.body.appendChild( text );
+        window.console = { log: function ( str ) {
+            text.value += '\n' + str;
+        } };
+    }
+
+
+    document.body.onclick = function ( e ) {
+        e = e || window.event;
+        var target = e.srcElement || e.target;
+
+        if ( target.tagName == 'INPUT' && target.getAttribute( 'type' ) == 'button' ) {
+            checking( target, new Function() );
+        }
+    };
+
+    function getStateTd( td ) {
+        td = td.parentNode.nextSibling;
+        while ( td ) {
+            if ( td.nodeType == 1 && td.tagName == 'TD' ) {
+                break;
+            }
+
+            td = td.nextSibling;
+        }
+
+        return td;
+    }
+
+    function checking( target, callback ) {
+        var stateTd = getStateTd( target );
+        stateTd.className = 'checking';
+        var value = target.value;
+
+        if ( window[ value ] ) {
+            window[ value ]( stateTd, callback );
+        }
+        else {
+            var moduleId = target.value + '/index';
+
+            require( [ moduleId ], function ( module ) {
+                checkNormalModule( moduleId, stateTd, module, callback );
+            } );
+        }
+    }
+
+
+    var inputs = document.getElementsByTagName( 'input' );
+    var len = inputs.length;
+    var buttons = [];
+    while ( len-- ) {
+        buttons.unshift( inputs[ len ] );
+    }
+
+    var index = 0;
+    len = buttons.length;
+    function checkNext() {
+        if ( index < len ) {
+            var button = buttons[ index++ ];
+            if ( button.disabled
+                || ( autostartIgnore
+                     && button.getAttribute( 'data-ignore' ) == autostartIgnore
+                    )
+            ) {
+                checkNext();
+            }
+            else {
+                checking( button, checkNext );
+            }
+        }
+        else {
+            alert( (new Date) - now )
+        }
+    }
+
+    var autostartIgnore;
+    if ( /[\?|]autostart(-([a-z]+))?/.test( location.search ) ) {
+        var now = new Date;
+        autostartIgnore = RegExp.$2;
+        setTimeout(function () {
+            now = new Date;
+            checkNext();
+        }, 1);
+    }
+
+})();
+</script>
+
+<script>
+require.addLoader(function (context, callback) {
+    var id = context.id;
+    if (/^custom-loader($|\/)/.test(id)) {
+        return require.toUrl(id + '.js').replace('custom-loader', 'custom-loader-ln');
+    }
+});
+
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
+    if (/^ud-custom-loader($|\/)/.test(id)) {
+        if (id.indexOf('index') > 0) {
+            define('ud-custom-loader/index', ['require', './cat'], function (require) {
+                var cat = require('./cat');
+                return {
+                    name: 'ud-custom-loader/index',
+                    cat: cat
+                };
+            });
+            callback();
+        }
+        else {
+            setTimeout(function () {
+                define(id, {name: id});
+                callback();
+            }, 500);
+        }
+
+        return false;
+    }
+});
+
+function userDefineCustomLoader(stateTd, callback) {
+    require(['ud-custom-loader/index'], function (index) {
+        if (index.name === 'ud-custom-loader/index'
+            && index.cat.name === 'ud-custom-loader/cat'
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if ( typeof callback == 'function' ) {
+            setTimeout( callback, 1 );
+        }
+    });
+}
+
+var udLoaderUniqIds = {};
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
+    if (/^ud-loader-uniq($|\/)/.test(id)) {
+        if (!udLoaderUniqIds[id]) {
+            udLoaderUniqIds[id] = 0;
+        }
+
+        udLoaderUniqIds[id]++;
+    }
+});
+
+function userDefineCustomLoaderIdUniq(stateTd, callback) {
+    require(['ud-loader-uniq/index'], function (index) {
+        var notRepeat = 1;
+        for (var key in udLoaderUniqIds) {
+            if (udLoaderUniqIds[key] > 1) {
+                notRepeat = 0;
+            }
+        }
+
+        if (notRepeat) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if (typeof callback == 'function') {
+            setTimeout(callback, 1);
+        }
+    });
+}
+
+// wait and call load method soon
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
+    if (/^ud-loader-wait($|\/)/.test(id)) {
+        setTimeout(function () {
+            context.load();
+        }, 200);
+        return false;
+    }
+});
+
+// wait and call load method soon
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
+    if (/^ud-loader-wait2($|\/)/.test(id)) {
+        setTimeout(function () {
+            context.load(require.toUrl(id + '.js').replace('ud-loader-wait2', 'ud-loader-wait-ln'));
+        }, 200);
+        return false;
+    }
+});
+
+// wait and call load method soon
+require.addLoader(function (context, callback) {
+    var id = context.id;
+
+    if (id === 'ud-loader-mix/cat') {
+        return false;
+    }
+});
+
+function userDefineCustomLoaderMix(stateTd, callback) {
+    var readyState = 0;
+    var result = true;
+
+    require(['ud-loader-mix/index2'], function (index) {
+        result = result && index.name === 'ud-loader-mix/index2'
+        readyState++;
+        done();
+    });
+
+    setTimeout(function () {
+        require(['ud-loader-mix/index'], function (index) {
+            result = result && index.name === 'ud-loader-mix/index'
+            readyState++;
+            done();
+        });
+    }, 200);
+
+    function done() {
+        if (readyState > 1) {
+            if (!hasModuleRequest('ud-loader-mix/cat')) {
+                stateTd.className = 'pass';
+            }
+            else {
+                stateTd.className = 'fail';
+            }
+
+            if (typeof callback == 'function') {
+                setTimeout(callback, 1);
+            }
+        }
+    }
+}
+
+function userDefineCustomLoaderCheckState(stateTd, callback) {
+    var result = true;
+    require.addLoader(function (context, callback) {
+        var id = context.id;
+
+        if (id === 'ud-loader-check-state/index') {
+            result = context.getModuleState('ud-loader-check-state/dog') >= require.ModuleState.LOADING
+                && context.getModuleState('ud-loader-check-state/cat') === require.ModuleState.PRE_DEFINED
+                && context.getModuleState('ud-loader-check-state/xxx') === require.ModuleState.NOT_FOUND
+        }
+    });
+
+
+    define('ud-loader-check-state/cat', function (require) {
+        var animal = require('./animal');
+
+        return {
+            name :'ud-loader-check-state/cat',
+            check: function () {
+                return animal.name === 'ud-loader-check-state/animal';
+            }
+        };
+    });
+
+    require(['ud-loader-check-state/dog']);
+    require(['ud-loader-check-state/index'], function (index) {
+        if (result && index.check() && index.name === 'ud-loader-check-state/index') {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+
+        if (typeof callback == 'function') {
+            setTimeout(callback, 1);
+        }
+    });
+}
+</script>
+<script>
+require.config({
+    onNodeCreated: function (script, config, id, src) {
+        if (id.indexOf('node-created-hook/index') === 0) {
+            script.setAttribute('data-hookflag', '1');
+        }
+    }
+});
+function checkOnNodeCreated(stateTd, callback) {
+    require(['node-created-hook/index'], function () {
+        if (findScriptByModuleId('node-created-hook/index').getAttribute('data-hookflag') === '1'
+            && findScriptByModuleId('node-created-hook/cat').getAttribute('data-hookflag') !== '1'
+        ) {
+            stateTd.className = 'pass';
+        }
+        else {
+            stateTd.className = 'fail';
+        }
+        callback();
+    });
+}
+</script>
+<script>
+var preparedMods = {};
+var definedMods = {};
+var preDefinedMods = {};
+var analyzedMods = {};
+
+function justFetch(stateTd, callback) {
+    require.config({
+        onModuleDefined: function (id, deps, factory) {
+            definedMods[id] = 1;
+        },
+
+        onModulePrepared: function (id, deps, factory) {
+            preparedMods[id] = 1;
+        },
+
+        onModulePreDefined: function (id, deps, factory) {
+            preDefinedMods[id] = 1;
+        },
+
+        onModuleAnalyzed: function (id, deps, factory) {
+            analyzedMods[id] = 1;
+        }
+    });
+
+    var isExpect = true;
+    require.fetch(['just-fetch/index'], function () {
+        setTimeout(function () {
+            isExpect = isExpect && hasModuleRequest('just-fetch/index');
+            isExpect = isExpect && hasModuleRequest('just-fetch/cat');
+            isExpect = isExpect
+                && preDefinedMods['just-fetch/index'] && preDefinedMods['just-fetch/cat']
+                && analyzedMods['just-fetch/index'] && analyzedMods['just-fetch/cat']
+                && preparedMods['just-fetch/index'] && preparedMods['just-fetch/cat']
+                && !definedMods['just-fetch/index'] && !definedMods['just-fetch/cat'];
+
+                require(['just-fetch/index'], function (index) {
+                    isExpect = isExpect && index.check();
+                    stateTd.className = isExpect ? 'pass' : 'fail';
+                    callback();
+                });
+        }, 10);
+    });
+}
+</script>
+
+<script>
+var definedModsUseListen = {};
+var preDefinedModsUseListen = {};
+
+function justFetchUseListen(stateTd, callback) {
+    require.listenModuleStateChange(
+        'just-fetch-use-listen/cat',
+        require.ModuleState.PRE_DEFINED,
+        function (id, state, factory) {
+            preDefinedModsUseListen[id] = 1;
+        }
+    );
+    require.listenModuleStateChange(
+        'just-fetch-use-listen/cat',
+        require.ModuleState.DEFINED,
+        function (id, state, factory) {
+            definedModsUseListen[id] = 1;
+        }
+    );
+    require.listenModuleStateChange(
+        'just-fetch-use-listen/index',
+        require.ModuleState.DEFINED,
+        function (id, state, factory) {
+            definedModsUseListen[id] = 1;
+        }
+    );
+
+    var isExpect = true;
+    require.fetch(['just-fetch-use-listen/index'], function () {
+        setTimeout(function () {
+            isExpect = isExpect && hasModuleRequest('just-fetch-use-listen/index');
+            isExpect = isExpect && hasModuleRequest('just-fetch-use-listen/cat');
+            isExpect = isExpect
+                && preDefinedModsUseListen['just-fetch-use-listen/cat']
+                && !definedModsUseListen['just-fetch-use-listen/index'] && !definedModsUseListen['just-fetch-use-listen/cat'];
+
+                require(['just-fetch-use-listen/index'], function (index) {
+                    setTimeout(function () {
+                        isExpect = isExpect && index.check()
+                            && !preDefinedModsUseListen['just-fetch-use-listen/index']
+                            && definedModsUseListen['just-fetch-use-listen/index'] && definedModsUseListen['just-fetch-use-listen/cat'];
+
+                        require.listenModuleStateChange(
+                            'just-fetch-use-listen/index',
+                            require.ModuleState.PRE_DEFINED,
+                            function (id, state, factory) {
+                                preDefinedModsUseListen[id] = 1;
+                            }
+                        );
+
+                        isExpect = isExpect && preDefinedModsUseListen['just-fetch-use-listen/index'];
+                        stateTd.className = isExpect ? 'pass' : 'fail';
+                        callback();
+                    }, 10);
+                });
+        }, 10);
+    });
+}
+</script>
+
+<script>
+function factoryReinvoke(stateTd, callback) {
+    require(['factory-re-invoke/index1', 'factory-re-invoke/index2'], function (index1, index2) {
+        stateTd.className = index1.check() && index2.check() && index2.name === 'factory-re-invoke/index2' && index1.name === 'factory-re-invoke/index1'
+            ? 'pass' : 'fail';
+        callback();
+    });
+    require(['factory-re-invoke/tiger']);
+}
+
+define('factory-re-invoke/index1', ['require','./tiger'], function (require) {
+    var tiger = require('./tiger');
+
+    return {
+        name: 'factory-re-invoke/index1',
+        check: function () {
+            return tiger.name === 'factory-re-invoke/tiger';
+        }
+    };
+});
+
+define('factory-re-invoke/index2', ['require', 'factory-re-invoke/index1'], function (require) {
+    var i1 = require('factory-re-invoke/index1');
+    return {
+        name: 'factory-re-invoke/index2',
+        check: function () {
+            return i1.name === 'factory-re-invoke/index1';
+        }
+    };
+});
+</script>
+
+<script>
+function undefModule(stateTd, callback) {
+    require(['undef/index'], function (index) {
+        if (index.name !== 'undef/index') {
+            stateTd.className = 'fail';
+            callback();
+            return;
+        }
+
+        require.undef('undef/index');
+        require.undef('undef/cat');
+
+        try {
+            require('undef/index');
+            stateTd.className = 'fail';
+            callback();
+            return;
+        }
+        catch (ex) {
+        }
+
+        require.config({
+            paths: {
+                'undef/index': 'undef/other',
+                'undef/cat': 'undef/dog'
+            }
+        });
+
+        require(['undef/index'], function (other) {
+            stateTd.className = other.name === 'undef/other' && other.pet.name === 'undef/dog'
+                ? 'pass' : 'fail';
+            callback();
+        });
+    })
+}
+</script>
+
+<script>
+define('multiEntryUseSameCombine/mod-1', 
+['require', 'multiEntryUseSameCombine/mod-ml', 'multiEntryUseSameCombine/mod-2'], 
+function (require) {
+    require('multiEntryUseSameCombine/mod-ml');
+    require('multiEntryUseSameCombine/mod-2');
+    return {
+        name: 'multiEntryUseSameCombine/mod-ml'
+    };
+});
+define('multiEntryUseSameCombine/mod-ml', ['require', 'multiEntryUseSameCombine/mod-out'], 
+function (require) {
+    require('multiEntryUseSameCombine/mod-out')
+    return {
+        name: 'multiEntryUseSameCombine/mod-ml'
+    };
+});
+define('multiEntryUseSameCombine/mod-2', ['require', 'multiEntryUseSameCombine/mod-ml'], 
+function (require) {
+    require('multiEntryUseSameCombine/mod-ml')
+    return {
+        name: 'multiEntryUseSameCombine/mod-2'
+    };
+});
+define(
+    'multiEntryUseSameCombine/entry1', 
+    ['require', 'multiEntryUseSameCombine/mod-1'], 
+    function (require) {
+        return {
+            dep: require('multiEntryUseSameCombine/mod-1'),
+            name: 'multiEntryUseSameCombine/entry1'
+        };
+    }
+);
+
+define(
+    'multiEntryUseSameCombine/entry2', 
+    ['require', 'multiEntryUseSameCombine/mod-2'], 
+    function (require, exports, module, mod2) {
+        require('multiEntryUseSameCombine/mod-2')
+        return {
+            name: 'multiEntryUseSameCombine/entry2'
+        };
+    }
+);
+
+function multiEntryUseSameCombine(stateTd, callback) {
+    var times = 0;
+    function done() {
+        if (times >= 2) {
+            stateTd.className = 'pass';
+            if (typeof callback == 'function') {
+                setTimeout(callback, 1);
+            }
+        }
+    }
+    
+
+    require(['multiEntryUseSameCombine/entry1'], function (entry) {
+        console.log(entry.name);
+        times++;
+        done();
+    });
+
+    require(['multiEntryUseSameCombine/entry2'], function (entry) {
+        console.log(entry.name);
+        times++;
+        done();
+    });
+
+    setTimeout(function () {
+        if (times < 2) {
+            stateTd.className = 'fail';
+            if (typeof callback == 'function') {
+                setTimeout(callback, 1);
+            }
+        }
+    }, 1500);
+}
+</script>
+</body>
+</html>

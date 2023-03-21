@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <script>
+    function checkMainSended() {
+        var scripts = document.getElementsByTagName('script');
+        var len = scripts.length;
+        while (len--) {
+            var script = scripts[len];
+            if (script.src.indexOf('main.js') >= 0) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    var domReady;
+    var bodyFoot;
+    var afterConfig;
+
+    var intervalId;
+    var isPageLoaded;
+    function pageLoaded() {
+        if (!isPageLoaded) {
+            isPageLoaded = true;
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        
+            if (!checkMainSended()) {
+                domReady = true;
+            }
+        }
+    }
+
+    if (document.addEventListener) {
+        document.addEventListener("DOMContentLoaded", pageLoaded, false);
+        window.addEventListener("load", pageLoaded, false);
+    } else if (window.attachEvent) {
+        window.attachEvent("onload", pageLoaded);
+
+        var testDiv = document.createElement('div');
+
+        //DOMContentLoaded approximation that uses a doScroll, as found by
+        //Diego Perini: http://javascript.nwbox.com/IEContentLoaded/,
+        //but modified by other contributors, including jdalton
+        if (testDiv.doScroll && window.external) {
+            intervalId = setInterval(function () {
+                try {
+                    testDiv.doScroll();
+                    pageLoaded();
+                } catch (e) {}
+            }, 30);
+        }
+    }
+    </script>
+    <script src="impl/esl/esl.js" data-main="main"></script>
+    <script>
+    require.config({
+        baseUrl: 'data-main'
+    });
+    </script>
+    <script>
+    if (!checkMainSended()) {
+        afterConfig = true;
+    }
+    </script>
+</head>
+<body>
+    <div id="state" style="background: gray">state</div>
+    <script>
+    if (!checkMainSended()) {
+        bodyFoot = true;
+    }
+    </script>
+</body>
+</html>
