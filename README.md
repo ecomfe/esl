@@ -14,9 +14,9 @@ ESL is a browser-only, amd-compliant module loader. In modern web applications, 
 
 - [前端为什么需要模块化? (WHY WEB MODULES?)](http://requirejs.org/docs/why.html)
 - [为什么需要使用AMD? (WHY AMD?)](http://requirejs.org/docs/whyamd.html)
-- [玩转AMD系列 - 设计思路篇](http://efe.baidu.com/blog/dissecting-amd-what/)
-- [玩转AMD系列 - 应用实践篇](http://efe.baidu.com/blog/dissecting-amd-how/)
-- [玩转AMD系列 - Loader篇](http://efe.baidu.com/blog/dissecting-amd-loader/)
+- [玩转AMD系列 - 设计思路篇](http://ecomfe.github.io/blog/dissecting-amd-what/)
+- [玩转AMD系列 - 应用实践篇](http://ecomfe.github.io/blog/dissecting-amd-how/)
+- [玩转AMD系列 - Loader篇](http://ecomfe.github.io/blog/dissecting-amd-loader/)
 - [AMD spec](https://github.com/amdjs/amdjs-api/wiki/AMD)
 - [AMD Require](https://github.com/amdjs/amdjs-api/wiki/require)
 - [AMD Common-Config](https://github.com/amdjs/amdjs-api/wiki/Common-Config)
@@ -45,13 +45,10 @@ See [Configuration Options](doc/config.md)
 
 ```html
 <!-- compressed -->
-<script src="http://s1.bdstatic.com/r/www/cache/efe/esl/2-1-6/esl.js"></script>
-
-<!-- compressed(https) -->
-<script src="https://ss1.bdstatic.com/5eN1bjq8AAUYm2zgoY3K/r/www/cache/efe/esl/2-1-6/esl.js"></script>
+<script src="https://unpkg.com/esljs@2.2.2/dist/esl.js"></script>
 
 <!-- source -->
-<script src="http://s1.bdstatic.com/r/www/cache/efe/esl/2-1-6/esl.source.js"></script>
+<script src="https://unpkg.com/esljs@2.2.2/dist/esl.source.js"></script>
 ```
 
 [过往版本 (Old version)](CDN.md)
@@ -61,7 +58,7 @@ See [Configuration Options](doc/config.md)
 
 `uglifyjs -mc + gzip`
 
-- `esl 2.1.6` 3.5k
+- `esl 2.2.2` 4.6k
 - `requirejs 2.3.5` 6.5k
 
 
